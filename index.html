@@ -147,14 +147,15 @@
       <div id="sparkle-container"></div>
       <img class="cat-img" src="cat.png" alt="Magic Cat" />
       <h2>SuperLotto Plus Picker</h2>
-      <p>
-        Pick <strong>5 numbers</strong> between 1 and 47 and
-        <strong>1 Mega number</strong> between 1 and 27.
-      </p>
+      <p id="instructions"></p>
       <button id="pick-btn" class="button">Generate Numbers</button>
       <div id="numbers" class="numbers"></div>
     </div>
     <script>
+      const MAIN_COUNT = 5;
+      const MAIN_MAX = 47;
+      const MEGA_MAX = 27;
+      document.getElementById("instructions").innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
       function randIntInclusive(min, max) {
         const range = max - min + 1;
         const buf = new Uint32Array(1);
@@ -195,12 +196,12 @@
           spawnSparkles(5);
         }, 150);
         const interval = setInterval(() => {
-          const unique = new Set();
-          while (unique.size < 5) {
-            unique.add(randIntInclusive(1, 47));
-          }
-          const arr = Array.from(unique).sort((a, b) => a - b);
-          const mega = randIntInclusive(1, 27);
+            const unique = new Set();
+            while (unique.size < MAIN_COUNT) {
+              unique.add(randIntInclusive(1, MAIN_MAX));
+            }
+            const arr = Array.from(unique).sort((a, b) => a - b);
+            const mega = randIntInclusive(1, MEGA_MAX);
           numbersDiv.innerHTML = "";
           arr.forEach((n) => {
             const ball = document.createElement("div");
