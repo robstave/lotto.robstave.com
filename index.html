@@ -76,8 +76,9 @@
         width: 100%;
         max-width: 360px;
         border-radius: 16px;
-        background: radial-gradient(80% 70% at 50% 40%, #0d0f1b, #07080f);
+        background: radial-gradient(80% 70% at 50% 40%, #1a092d, #0d011a);
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4), inset 0 0 80px rgba(140, 110, 255, 0.05);
+        display: none;
       }
       .number-ball {
         width: 52px;
@@ -166,7 +167,7 @@
       const MAIN_COUNT = 5;
       const MAIN_MAX = 47;
       const MEGA_MAX = 27;
-      let lastMain = Array.from({ length: MAIN_COUNT }, (_, i) => i + 1);
+      let lastMain = [];
       document.getElementById(
         "instructions"
       ).innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
@@ -200,6 +201,7 @@
         const pickBtn = document.getElementById("pick-btn");
         const numbersDiv = document.getElementById("numbers");
         const catImg = document.querySelector(".cat-img");
+        const board = document.getElementById("mystic-board");
         pickBtn.disabled = true;
         numbersDiv.innerHTML = "";
         catImg.style.animation = "spin 1.5s linear";
@@ -227,6 +229,7 @@
           numbersDiv.appendChild(megaBall);
           lastMain = arr;
           mystic.draw(MAIN_MAX, arr);
+          if (iteration === 0) board.style.display = "block";
           iteration++;
           if (iteration >= 20) {
             clearInterval(interval);
@@ -353,8 +356,9 @@
         return { draw };
       })();
 
-      mystic.draw(MAIN_MAX, lastMain);
-      window.addEventListener("resize", () => mystic.draw(MAIN_MAX, lastMain));
+      window.addEventListener("resize", () => {
+        if (lastMain.length) mystic.draw(MAIN_MAX, lastMain);
+      });
     </script>
   </body>
 </html>
