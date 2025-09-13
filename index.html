@@ -1,222 +1,242 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>California SuperLotto VibeCode Demo</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    min-height: 100vh;
-    margin: 0;
-    padding: 20px;
-    background: linear-gradient(#22004c, #3f007f);
-    color: #E9D7FF;
-  }
-  .container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: rgba(48, 25, 71, 0.95);
-    border-radius: 16px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-    padding: 24px;
-    max-width: 500px;
-    overflow: hidden;
-    color: #E9D7FF;
-  }
-  .cat-img {
-    width: 240px;
-    height: 240px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 24px;
-  }
-  h2 {
-    margin: 0;
-    color: #F0E8FF;
-  }
-  p {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    color: #D1B6F2;
-    text-align: center;
-  }
-  .button {
-    margin-top: 12px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 12px;
-    background: #7E56DA;
-    color: #FFFFFF;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background 0.3s;
-  }
-  .button:hover {
-    background: #916CE0;
-  }
-  .numbers {
-    margin-top: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    /* Prevent the container from collapsing when numbers are temporarily removed */
-    min-height: 60px;
-  }
-  .number-ball {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 20px;
-    color: #FFFFFF;
-    background: #7E56DA;
-    animation: bounce 0.6s ease-out;
-  }
-  .mega-ball {
-    background: #BB65C8;
-  }
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-12px); }
-    60% { transform: translateY(-6px); }
-  }
-  /* Sparkles */
-  #sparkle-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  .sparkle {
-    position: absolute;
-    background: #BB86FC;
-    opacity: 0;
-    transform: rotate(45deg) scale(0);
-    border-radius: 2px;
-    animation: sparkle 1.5s ease-out forwards;
-  }
-  @keyframes sparkle {
-    0% {
-      opacity: 1;
-      transform: rotate(45deg) scale(0);
-    }
-    50% {
-      opacity: 1;
-      transform: rotate(45deg) scale(1.2);
-    }
-    100% {
-      opacity: 0;
-      transform: rotate(45deg) scale(0);
-    }
-  }
-</style>
-</head>
-<body>
-<div class="container">
-  <div id="sparkle-container"></div>
-  <img class="cat-img" src="cat.png" alt="Magic Cat">
-  <h2>SuperLotto Plus Picker</h2>
-  <p>Pick <strong>5 numbers</strong> between 1 and 47 and <strong>1 Mega number</strong> between 1 and 27.</p>
-  <button id="pick-btn" class="button">Generate Numbers</button>
-  <div id="numbers" class="numbers"></div>
-</div>
-<script>
-function seededRandom(seed) {
-  let m = 2147483647;
-  let a = 48271;
-  let state = seed % m;
-  return function() {
-    state = (a * state) % m;
-    return state / m;
-  };
-}
-async function fetchSeed() {
-  const url = 'https://www.randomnumberapi.com/api/v1.0/random?min=1&max=2147483646&count=1';
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('Seed fetch failed');
-    const data = await resp.json();
-    const seed = parseInt(data[0], 10);
-    if (Number.isFinite(seed)) return seed;
-  } catch (e) {
-    console.warn('Seed fetch error:', e);
-  }
-  return Date.now() % 2147483646;
-}
-function spawnSparkles(count = 8) {
-  const container = document.getElementById('sparkle-container');
-  for (let i = 0; i < count; i++) {
-    const spark = document.createElement('div');
-    spark.className = 'sparkle';
-    const size = Math.random() * 8 + 4;
-    spark.style.width = size + 'px';
-    spark.style.height = size + 'px';
-    spark.style.left = Math.random() * 100 + '%';
-    spark.style.top = Math.random() * 100 + '%';
-    container.appendChild(spark);
-    setTimeout(() => {
-      if (spark.parentElement) spark.parentElement.removeChild(spark);
-    }, 1500);
-  }
-}
-async function generateNumbers() {
-  const pickBtn = document.getElementById('pick-btn');
-  const numbersDiv = document.getElementById('numbers');
-  const catImg = document.querySelector('.cat-img');
-  pickBtn.disabled = true;
-  numbersDiv.innerHTML = '';
-  catImg.style.animation = 'spin 1.5s linear';
-  const seed = await fetchSeed();
-  const rnd = seededRandom(seed);
-  let iteration = 0;
-  const sparkleInterval = setInterval(() => {
-    spawnSparkles(5);
-  }, 150);
-  const interval = setInterval(() => {
-    const unique = new Set();
-    while (unique.size < 5) {
-      unique.add(Math.floor(rnd() * 47) + 1);
-    }
-    const arr = Array.from(unique).sort((a, b) => a - b);
-    const mega = Math.floor(rnd() * 27) + 1;
-    numbersDiv.innerHTML = '';
-    arr.forEach(n => {
-      const ball = document.createElement('div');
-      ball.className = 'number-ball';
-      ball.textContent = n;
-      numbersDiv.appendChild(ball);
-    });
-    const megaBall = document.createElement('div');
-    megaBall.className = 'number-ball mega-ball';
-    megaBall.textContent = mega;
-    numbersDiv.appendChild(megaBall);
-    iteration++;
-    if (iteration >= 20) {
-      clearInterval(interval);
-      clearInterval(sparkleInterval);
-      pickBtn.disabled = false;
-      catImg.style.animation = '';
-    }
-  }, 100);
-}
-document.getElementById('pick-btn').addEventListener('click', generateNumbers);
-</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>California SuperLotto VibeCode Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(#22004c, #3f007f);
+        color: #e9d7ff;
+      }
+      .container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(48, 25, 71, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        padding: 24px;
+        max-width: 500px;
+        overflow: hidden;
+        color: #e9d7ff;
+      }
+      .cat-img {
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 24px;
+      }
+      h2 {
+        margin: 0;
+        color: #f0e8ff;
+      }
+      p {
+        margin-top: 8px;
+        margin-bottom: 16px;
+        color: #d1b6f2;
+        text-align: center;
+      }
+      .button {
+        margin-top: 12px;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 12px;
+        background: #7e56da;
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+      }
+      .button:hover {
+        background: #916ce0;
+      }
+      .numbers {
+        margin-top: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        /* Prevent the container from collapsing when numbers are temporarily removed */
+        min-height: 60px;
+      }
+      .number-ball {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 20px;
+        color: #ffffff;
+        background: #7e56da;
+        animation: bounce 0.6s ease-out;
+      }
+      .mega-ball {
+        background: #bb65c8;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-12px);
+        }
+        60% {
+          transform: translateY(-6px);
+        }
+      }
+      /* Sparkles */
+      #sparkle-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .sparkle {
+        position: absolute;
+        background: #bb86fc;
+        opacity: 0;
+        transform: rotate(45deg) scale(0);
+        border-radius: 2px;
+        animation: sparkle 1.5s ease-out forwards;
+      }
+      @keyframes sparkle {
+        0% {
+          opacity: 1;
+          transform: rotate(45deg) scale(0);
+        }
+        50% {
+          opacity: 1;
+          transform: rotate(45deg) scale(1.2);
+        }
+        100% {
+          opacity: 0;
+          transform: rotate(45deg) scale(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="sparkle-container"></div>
+      <img class="cat-img" src="cat.png" alt="Magic Cat" />
+      <h2>SuperLotto Plus Picker</h2>
+      <p>
+        Pick <strong>5 numbers</strong> between 1 and 47 and
+        <strong>1 Mega number</strong> between 1 and 27.
+      </p>
+      <button id="pick-btn" class="button">Generate Numbers</button>
+      <div id="numbers" class="numbers"></div>
+    </div>
+    <script>
+      function seededRandom(seed) {
+        let m = 2147483647;
+        let a = 48271;
+        let state = seed % m;
+        return function () {
+          state = (a * state) % m;
+          return state / m;
+        };
+      }
+      async function fetchSeed() {
+        const url =
+          "https://www.randomnumberapi.com/api/v1.0/random?min=1&max=2147483646&count=1";
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error("Seed fetch failed");
+          const data = await resp.json();
+          const seed = parseInt(data[0], 10);
+          if (Number.isFinite(seed)) return seed;
+        } catch (e) {
+          console.warn("Seed fetch error:", e);
+        }
+        return Date.now() % 2147483646;
+      }
+      function spawnSparkles(count = 8) {
+        const container = document.getElementById("sparkle-container");
+        for (let i = 0; i < count; i++) {
+          const spark = document.createElement("div");
+          spark.className = "sparkle";
+          const size = Math.random() * 8 + 4;
+          spark.style.width = size + "px";
+          spark.style.height = size + "px";
+          spark.style.left = Math.random() * 100 + "%";
+          spark.style.top = Math.random() * 100 + "%";
+          container.appendChild(spark);
+          setTimeout(() => {
+            if (spark.parentElement) spark.parentElement.removeChild(spark);
+          }, 1500);
+        }
+      }
+      async function generateNumbers() {
+        const pickBtn = document.getElementById("pick-btn");
+        const numbersDiv = document.getElementById("numbers");
+        const catImg = document.querySelector(".cat-img");
+        pickBtn.disabled = true;
+        numbersDiv.innerHTML = "";
+        catImg.style.animation = "spin 1.5s linear";
+        const seed = await fetchSeed();
+        const rnd = seededRandom(seed);
+        let iteration = 0;
+        const sparkleInterval = setInterval(() => {
+          spawnSparkles(5);
+        }, 150);
+        const interval = setInterval(() => {
+          const unique = new Set();
+          while (unique.size < 5) {
+            unique.add(Math.floor(rnd() * 47) + 1);
+          }
+          const arr = Array.from(unique).sort((a, b) => a - b);
+          const mega = Math.floor(rnd() * 27) + 1;
+          numbersDiv.innerHTML = "";
+          arr.forEach((n) => {
+            const ball = document.createElement("div");
+            ball.className = "number-ball";
+            ball.textContent = n;
+            numbersDiv.appendChild(ball);
+          });
+          const megaBall = document.createElement("div");
+          megaBall.className = "number-ball mega-ball";
+          megaBall.textContent = mega;
+          numbersDiv.appendChild(megaBall);
+          iteration++;
+          if (iteration >= 20) {
+            clearInterval(interval);
+            clearInterval(sparkleInterval);
+            pickBtn.disabled = false;
+            catImg.style.animation = "";
+          }
+        }, 100);
+      }
+      document
+        .getElementById("pick-btn")
+        .addEventListener("click", generateNumbers);
+    </script>
+  </body>
 </html>
