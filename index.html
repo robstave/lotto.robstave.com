@@ -77,7 +77,8 @@
         max-width: 360px;
         border-radius: 16px;
         background: radial-gradient(80% 70% at 50% 40%, #1a092d, #0d011a);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4), inset 0 0 80px rgba(140, 110, 255, 0.05);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4),
+          inset 0 0 80px rgba(140, 110, 255, 0.05);
         display: none;
       }
       .number-ball {
@@ -161,7 +162,12 @@
       <p id="instructions"></p>
       <button id="pick-btn" class="button">Generate Numbers</button>
       <div id="numbers" class="numbers"></div>
-      <svg id="mystic-board" class="board" role="img" aria-label="Mystic chord diagram"></svg>
+      <svg
+        id="mystic-board"
+        class="board"
+        role="img"
+        aria-label="Mystic chord diagram"
+      ></svg>
     </div>
     <script>
       const MAIN_COUNT = 5;
@@ -266,10 +272,16 @@
           .attr("y2", "0%");
         grad.append("stop").attr("offset", "0%").attr("stop-color", "#c9b5ff");
         grad.append("stop").attr("offset", "50%").attr("stop-color", "#a88bff");
-        grad.append("stop").attr("offset", "100%").attr("stop-color", "#e0d7ff");
+        grad
+          .append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", "#e0d7ff");
 
         function size() {
-          const w = Math.min(360, document.getElementById("mystic-board").clientWidth);
+          const w = Math.min(
+            360,
+            document.getElementById("mystic-board").clientWidth
+          );
           svg.attr("viewBox", `0 0 ${w} ${w}`);
           g.attr("transform", `translate(${w / 2},${w / 2})`);
           return w;
@@ -297,14 +309,14 @@
           const R = w * 0.4;
           const rNode = Math.max(2, w * 0.006);
 
-          g
-            .append("circle")
+          g.append("circle")
             .attr("r", R)
             .attr("fill", "none")
             .attr("stroke", "#1a1c2a")
             .attr("stroke-width", 1.2);
 
-          const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
+          const toAngle = (n) =>
+            ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
           const verts = picks
             .map((n) => ({ n, a: toAngle(n) }))
             .sort((a, b) => a.a - b.a);
@@ -339,8 +351,7 @@
             .ease(d3.easeCubicOut)
             .attr("stroke-dashoffset", 0);
 
-          g
-            .selectAll(".node")
+          g.selectAll(".node")
             .data(verts)
             .enter()
             .append("circle")
