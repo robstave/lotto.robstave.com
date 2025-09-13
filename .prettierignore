@@ -1,0 +1,6 @@
+node_modules
+dist
+build
+coverage
+lychee/           # lychee-action output (e.g., lychee/out.md)
+.github/           # GitHub workflow files
