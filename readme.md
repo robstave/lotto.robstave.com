@@ -27,5 +27,4 @@ IAM policy for the deploy user (attach to that IAM user):
 }
 
 ## mystic circle diagram
-
-Open `mystic.html` in a browser to view a star-polygon chord diagram of randomly chosen numbers.
+The main demo (`index.html`) now renders a star-polygon chord diagram beneath the generated numbers.

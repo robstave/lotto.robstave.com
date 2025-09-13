@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>California SuperLotto VibeCode Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -68,6 +69,15 @@
         gap: 10px;
         /* Prevent the container from collapsing when numbers are temporarily removed */
         min-height: 60px;
+      }
+      .board {
+        margin-top: 24px;
+        aspect-ratio: 1 / 1;
+        width: 100%;
+        max-width: 360px;
+        border-radius: 16px;
+        background: radial-gradient(80% 70% at 50% 40%, #0d0f1b, #07080f);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4), inset 0 0 80px rgba(140, 110, 255, 0.05);
       }
       .number-ball {
         width: 52px;
@@ -150,11 +160,13 @@
       <p id="instructions"></p>
       <button id="pick-btn" class="button">Generate Numbers</button>
       <div id="numbers" class="numbers"></div>
+      <svg id="mystic-board" class="board" role="img" aria-label="Mystic chord diagram"></svg>
     </div>
     <script>
       const MAIN_COUNT = 5;
       const MAIN_MAX = 47;
       const MEGA_MAX = 27;
+      let lastMain = Array.from({ length: MAIN_COUNT }, (_, i) => i + 1);
       document.getElementById(
         "instructions"
       ).innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
@@ -213,6 +225,8 @@
           megaBall.className = "number-ball mega-ball";
           megaBall.textContent = mega;
           numbersDiv.appendChild(megaBall);
+          lastMain = arr;
+          mystic.draw(MAIN_MAX, arr);
           iteration++;
           if (iteration >= 20) {
             clearInterval(interval);
@@ -225,6 +239,122 @@
       document
         .getElementById("pick-btn")
         .addEventListener("click", generateNumbers);
+
+      const mystic = (() => {
+        const svg = d3.select("#mystic-board");
+        const g = svg.append("g");
+        const defs = svg.append("defs");
+
+        const glow = defs.append("filter").attr("id", "glow");
+        glow
+          .append("feGaussianBlur")
+          .attr("stdDeviation", 3)
+          .attr("result", "coloredBlur");
+        const feMerge = glow.append("feMerge");
+        feMerge.append("feMergeNode").attr("in", "coloredBlur");
+        feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+        const grad = defs
+          .append("linearGradient")
+          .attr("id", "gradStroke")
+          .attr("x1", "0%")
+          .attr("y1", "0%")
+          .attr("x2", "100%")
+          .attr("y2", "0%");
+        grad.append("stop").attr("offset", "0%").attr("stop-color", "#c9b5ff");
+        grad.append("stop").attr("offset", "50%").attr("stop-color", "#a88bff");
+        grad.append("stop").attr("offset", "100%").attr("stop-color", "#e0d7ff");
+
+        function size() {
+          const w = Math.min(360, document.getElementById("mystic-board").clientWidth);
+          svg.attr("viewBox", `0 0 ${w} ${w}`);
+          g.attr("transform", `translate(${w / 2},${w / 2})`);
+          return w;
+        }
+
+        function polarToXY(angle, r) {
+          return [Math.cos(angle) * r, Math.sin(angle) * r];
+        }
+
+        function starOrder(k) {
+          const step = Math.max(2, Math.floor(k / 2));
+          const order = [];
+          let i = 0;
+          for (let n = 0; n < k; n++) {
+            order.push(i);
+            i = (i + step) % k;
+          }
+          return order;
+        }
+
+        function draw(totalPositions, picks) {
+          const w = size();
+          g.selectAll("*").remove();
+
+          const R = w * 0.4;
+          const rNode = Math.max(2, w * 0.006);
+
+          g
+            .append("circle")
+            .attr("r", R)
+            .attr("fill", "none")
+            .attr("stroke", "#1a1c2a")
+            .attr("stroke-width", 1.2);
+
+          const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
+          const verts = picks
+            .map((n) => ({ n, a: toAngle(n) }))
+            .sort((a, b) => a.a - b.a);
+
+          const order = starOrder(verts.length);
+
+          const path = d3.path();
+          const first = polarToXY(verts[order[0]].a, R);
+          path.moveTo(first[0], first[1]);
+          for (let i = 1; i < order.length; i++) {
+            const p = polarToXY(verts[order[i]].a, R);
+            path.lineTo(p[0], p[1]);
+          }
+          path.closePath();
+
+          const chord = g
+            .append("path")
+            .attr("class", "chord")
+            .attr("d", path.toString())
+            .attr("fill", "none")
+            .attr("stroke", "url(#gradStroke)")
+            .attr("stroke-width", Math.max(1.5, w * 0.004))
+            .attr("filter", "url(#glow)")
+            .attr("stroke-linejoin", "round");
+
+          const length = chord.node().getTotalLength();
+          chord
+            .attr("stroke-dasharray", length)
+            .attr("stroke-dashoffset", length)
+            .transition()
+            .duration(1200)
+            .ease(d3.easeCubicOut)
+            .attr("stroke-dashoffset", 0);
+
+          g
+            .selectAll(".node")
+            .data(verts)
+            .enter()
+            .append("circle")
+            .attr("class", "node")
+            .attr("cx", (d) => polarToXY(d.a, R)[0])
+            .attr("cy", (d) => polarToXY(d.a, R)[1])
+            .attr("r", rNode)
+            .attr("fill", "#ffd8ff")
+            .attr("opacity", 0.85)
+            .attr("filter", "url(#glow)");
+        }
+
+        return { draw };
+      })();
+
+      mystic.draw(MAIN_MAX, lastMain);
+      window.addEventListener("resize", () => mystic.draw(MAIN_MAX, lastMain));
     </script>
   </body>
 </html>
