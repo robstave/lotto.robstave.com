@@ -155,28 +155,17 @@
       <div id="numbers" class="numbers"></div>
     </div>
     <script>
-      function seededRandom(seed) {
-        let m = 2147483647;
-        let a = 48271;
-        let state = seed % m;
-        return function () {
-          state = (a * state) % m;
-          return state / m;
-        };
-      }
-      async function fetchSeed() {
-        const url =
-          "https://www.randomnumberapi.com/api/v1.0/random?min=1&max=2147483646&count=1";
-        try {
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error("Seed fetch failed");
-          const data = await resp.json();
-          const seed = parseInt(data[0], 10);
-          if (Number.isFinite(seed)) return seed;
-        } catch (e) {
-          console.warn("Seed fetch error:", e);
-        }
-        return Date.now() % 2147483646;
+      function randIntInclusive(min, max) {
+        const range = max - min + 1;
+        const buf = new Uint32Array(1);
+        let x;
+        do {
+          crypto.getRandomValues(buf);
+          x = buf[0] % range;
+        } while (
+          buf[0] - x > 0xffffffff - (0xffffffff % range)
+        );
+        return min + x;
       }
       function spawnSparkles(count = 8) {
         const container = document.getElementById("sparkle-container");
@@ -194,15 +183,13 @@
           }, 1500);
         }
       }
-      async function generateNumbers() {
+      function generateNumbers() {
         const pickBtn = document.getElementById("pick-btn");
         const numbersDiv = document.getElementById("numbers");
         const catImg = document.querySelector(".cat-img");
         pickBtn.disabled = true;
         numbersDiv.innerHTML = "";
         catImg.style.animation = "spin 1.5s linear";
-        const seed = await fetchSeed();
-        const rnd = seededRandom(seed);
         let iteration = 0;
         const sparkleInterval = setInterval(() => {
           spawnSparkles(5);
@@ -210,10 +197,10 @@
         const interval = setInterval(() => {
           const unique = new Set();
           while (unique.size < 5) {
-            unique.add(Math.floor(rnd() * 47) + 1);
+            unique.add(randIntInclusive(1, 47));
           }
           const arr = Array.from(unique).sort((a, b) => a - b);
-          const mega = Math.floor(rnd() * 27) + 1;
+          const mega = randIntInclusive(1, 27);
           numbersDiv.innerHTML = "";
           arr.forEach((n) => {
             const ball = document.createElement("div");
