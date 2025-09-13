@@ -5,6 +5,9 @@
     <title>California SuperLotto VibeCode Demo</title>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <style>
+      :root {
+        --cat-size: 240px;
+      }
       body {
         font-family: Arial, sans-serif;
         display: flex;
@@ -30,12 +33,17 @@
         overflow: hidden;
         color: #e9d7ff;
       }
+      .cat-wrapper {
+        position: relative;
+        width: var(--cat-size);
+        height: var(--cat-size);
+        margin-bottom: 24px;
+      }
       .cat-img {
-        width: 240px;
-        height: 240px;
+        width: 100%;
+        height: 100%;
         border-radius: 50%;
         object-fit: cover;
-        margin-bottom: 24px;
       }
       h2 {
         margin: 0;
@@ -71,14 +79,12 @@
         min-height: 60px;
       }
       .board {
-        margin-top: 24px;
-        aspect-ratio: 1 / 1;
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
-        max-width: 360px;
-        border-radius: 16px;
-        background: radial-gradient(80% 70% at 50% 40%, #1a092d, #0d011a);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4),
-          inset 0 0 80px rgba(140, 110, 255, 0.05);
+        height: 100%;
+        pointer-events: none;
         display: none;
       }
       .number-ball {
@@ -155,20 +161,22 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <div id="sparkle-container"></div>
-      <img class="cat-img" src="cat.png" alt="Magic Cat" />
-      <h2>SuperLotto Plus Picker</h2>
-      <p id="instructions"></p>
-      <button id="pick-btn" class="button">Generate Numbers</button>
-      <div id="numbers" class="numbers"></div>
-      <svg
-        id="mystic-board"
-        class="board"
-        role="img"
-        aria-label="Mystic chord diagram"
-      ></svg>
-    </div>
+      <div class="container">
+        <div id="sparkle-container"></div>
+        <div class="cat-wrapper">
+          <img class="cat-img" src="cat.png" alt="Magic Cat" />
+          <svg
+            id="mystic-board"
+            class="board"
+            role="img"
+            aria-label="Mystic chord diagram"
+          ></svg>
+        </div>
+        <h2>SuperLotto Plus Picker</h2>
+        <p id="instructions"></p>
+        <button id="pick-btn" class="button">Generate Numbers</button>
+        <div id="numbers" class="numbers"></div>
+      </div>
     <script>
       const MAIN_COUNT = 5;
       const MAIN_MAX = 47;
@@ -278,10 +286,7 @@
           .attr("stop-color", "#e0d7ff");
 
         function size() {
-          const w = Math.min(
-            360,
-            document.getElementById("mystic-board").clientWidth
-          );
+          const w = document.getElementById("mystic-board").clientWidth;
           svg.attr("viewBox", `0 0 ${w} ${w}`);
           g.attr("transform", `translate(${w / 2},${w / 2})`);
           return w;
