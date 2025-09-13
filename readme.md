@@ -25,3 +25,7 @@ IAM policy for the deploy user (attach to that IAM user):
 { "Effect": "Allow", "Action": ["s3:PutObject","s3:DeleteObject","s3:PutObjectAcl"], "Resource": "arn:aws:s3:::lotto.robstave.com/\*" }
 ]
 }
+
+## mystic circle diagram
+
+Open `mystic.html` in a browser to view a star-polygon chord diagram of randomly chosen numbers.

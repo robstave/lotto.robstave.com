@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mystic Lotto Chords</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root {
+      --bg: #0a0b10;
+      --fg: #eae7ff;
+      --line: #b69cff;
+      --node: #ffd8ff;
+      --ring: #1a1c2a;
+      --accent: #a88bff;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(1200px 700px at 50% 40%, #121324, var(--bg));
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 24px auto;
+      padding: 16px;
+    }
+    h1 { font-weight: 600; font-size: 1.15rem; opacity: .85; letter-spacing: .02em; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0 18px;
+    }
+    label { font-size: .95rem; opacity: .9; }
+    select, button {
+      background: #15172a; color: var(--fg);
+      border: 1px solid #2a2d4a; border-radius: 10px; padding: 8px 10px;
+      font-size: .95rem;
+    }
+    button { cursor: pointer; border-color: #3a3e6a; }
+    button:hover { background: #1a1d36; }
+    .board {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      max-width: 720px;
+      border-radius: 16px;
+      margin: 0 auto;
+      background: radial-gradient(80% 70% at 50% 40%, #0d0f1b, #07080f);
+      box-shadow: 0 10px 35px rgba(0,0,0,.45), inset 0 0 150px rgba(140,110,255,.05);
+    }
+    .note {
+      text-align: center; font-size: .9rem; opacity: .7; margin-top: 10px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chord { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>mystic chords of chance</h1>
+
+    <div class="controls">
+      <label>Positions on circle:
+        <select id="total">
+          <option value="69" selected>69 (Powerball main)</option>
+          <option value="70">70</option>
+          <option value="60">60</option>
+          <option value="50">50</option>
+          <option value="40">40</option>
+          <option value="36">36</option>
+        </select>
+      </label>
+
+      <label>How many points:
+        <select id="count">
+          <option value="5" selected>5 (pentagram)</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+        </select>
+      </label>
+
+      <button id="pick">Pick Again</button>
+    </div>
+
+    <svg class="board" id="svg" role="img" aria-label="Mystic chord diagram"></svg>
+    <div class="note">no numbers displayed • points are placed on an invisible 360° lattice • lines use star ordering for that occult geometry ✶</div>
+  </div>
+
+  <script>
+    function randIntInclusive(min, max) {
+      const range = max - min + 1;
+      const buf = new Uint32Array(1);
+      const limit = Math.floor(0xFFFFFFFF / range) * range;
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return min + (x % range);
+    }
+    function uniqueSample(count, min, max) {
+      const s = new Set();
+      while (s.size < count) s.add(randIntInclusive(min, max));
+      return [...s];
+    }
+
+    const svg = d3.select("#svg");
+    const g = svg.append("g");
+    const defs = svg.append("defs");
+
+    const glow = defs.append("filter").attr("id", "glow");
+    glow.append("feGaussianBlur").attr("stdDeviation", 3).attr("result", "coloredBlur");
+    const feMerge = glow.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "coloredBlur");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    const grad = defs.append("linearGradient")
+      .attr("id", "gradStroke").attr("x1", "0%").attr("y1", "0%").attr("x2", "100%" ).attr("y2", "0%");
+    grad.append("stop").attr("offset", "0%").attr("stop-color", "#c9b5ff");
+    grad.append("stop").attr("offset", "50%").attr("stop-color", "#a88bff");
+    grad.append("stop").attr("offset", "100%").attr("stop-color", "#e0d7ff");
+
+    function size() {
+      const w = Math.min(720, Math.max(320, document.querySelector(".board").clientWidth));
+      svg.attr("viewBox", `0 0 ${w} ${w}`);
+      g.attr("transform", `translate(${w/2},${w/2})`);
+      return w;
+    }
+
+    function polarToXY(angle, r) {
+      return [Math.cos(angle) * r, Math.sin(angle) * r];
+    }
+
+    function starOrder(k) {
+      const step = Math.max(2, Math.floor(k/2));
+      const order = [];
+      let i = 0;
+      for (let n = 0; n < k; n++) {
+        order.push(i);
+        i = (i + step) % k;
+      }
+      return order;
+    }
+
+    function draw(totalPositions, picks) {
+      const w = size();
+      g.selectAll("*").remove();
+
+      const R = w * 0.40;
+      const rNode = Math.max(2, w * 0.006);
+
+      g.append("circle")
+        .attr("r", R)
+        .attr("fill", "none")
+        .attr("stroke", "#1a1c2a")
+        .attr("stroke-width", 1.2);
+
+      const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI/2;
+      const verts = picks
+        .map(n => ({ n, a: toAngle(n) }))
+        .sort((a,b) => a.a - b.a);
+
+      const order = starOrder(verts.length);
+
+      const path = d3.path();
+      const first = polarToXY(verts[order[0]].a, R);
+      path.moveTo(first[0], first[1]);
+      for (let i = 1; i < order.length; i++) {
+        const p = polarToXY(verts[order[i]].a, R);
+        path.lineTo(p[0], p[1]);
+      }
+      path.closePath();
+
+      g.append("path")
+        .attr("class", "chord")
+        .attr("d", path.toString())
+        .attr("fill", "none")
+        .attr("stroke", "url(#gradStroke)")
+        .attr("stroke-width", Math.max(1.5, w * 0.004))
+        .attr("filter", "url(#glow)")
+        .attr("stroke-linejoin", "round");
+
+      g.selectAll(".node")
+        .data(verts)
+        .enter()
+        .append("circle")
+        .attr("class", "node")
+        .attr("cx", d => polarToXY(d.a, R)[0])
+        .attr("cy", d => polarToXY(d.a, R)[1])
+        .attr("r", rNode)
+        .attr("fill", "#ffd8ff")
+        .attr("opacity", 0.85)
+        .attr("filter", "url(#glow)");
+    }
+
+    function rerender() {
+      const total = parseInt(document.getElementById("total").value, 10);
+      const count = parseInt(document.getElementById("count").value, 10);
+      const picks = uniqueSample(count, 1, total);
+      draw(total, picks);
+      localStorage.setItem('mystic:last', JSON.stringify({ total, picks }));
+    }
+
+    const saved = (() => { try { return JSON.parse(localStorage.getItem('mystic:last')); } catch { return null; } })();
+    if (saved && Array.isArray(saved.picks)) {
+      draw(saved.total, saved.picks);
+    } else {
+      rerender();
+    }
+
+    document.getElementById("pick").addEventListener("click", rerender);
+    document.getElementById("total").addEventListener("change", rerender);
+    document.getElementById("count").addEventListener("change", rerender);
+
+    window.addEventListener("resize", () => {
+      const savedNow = JSON.parse(localStorage.getItem('mystic:last') || '{"total":69,"picks":[1,2,3,4,5]}');
+      draw(savedNow.total, savedNow.picks);
+    });
+  </script>
+</body>
+</html>
