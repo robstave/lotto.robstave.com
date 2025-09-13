@@ -14,7 +14,7 @@ jobs:
         with:
           args: --no-progress ./index.html
       - name: Validate HTML
-        uses: Cycjimmy/validate-html@v1
+        uses: Cycjimmy/validate-html-action@v1
         with:
           files: ./index.html
       - name: Set up Node.js
