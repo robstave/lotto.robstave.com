@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -155,7 +155,9 @@
       const MAIN_COUNT = 5;
       const MAIN_MAX = 47;
       const MEGA_MAX = 27;
-      document.getElementById("instructions").innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
+      document.getElementById(
+        "instructions"
+      ).innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
       function randIntInclusive(min, max) {
         const range = max - min + 1;
         const buf = new Uint32Array(1);
@@ -163,9 +165,7 @@
         do {
           crypto.getRandomValues(buf);
           x = buf[0] % range;
-        } while (
-          buf[0] - x > 0xffffffff - (0xffffffff % range)
-        );
+        } while (buf[0] - x > 0xffffffff - (0xffffffff % range));
         return min + x;
       }
       function spawnSparkles(count = 8) {
@@ -196,12 +196,12 @@
           spawnSparkles(5);
         }, 150);
         const interval = setInterval(() => {
-            const unique = new Set();
-            while (unique.size < MAIN_COUNT) {
-              unique.add(randIntInclusive(1, MAIN_MAX));
-            }
-            const arr = Array.from(unique).sort((a, b) => a - b);
-            const mega = randIntInclusive(1, MEGA_MAX);
+          const unique = new Set();
+          while (unique.size < MAIN_COUNT) {
+            unique.add(randIntInclusive(1, MAIN_MAX));
+          }
+          const arr = Array.from(unique).sort((a, b) => a - b);
+          const mega = randIntInclusive(1, MEGA_MAX);
           numbersDiv.innerHTML = "";
           arr.forEach((n) => {
             const ball = document.createElement("div");
