@@ -201,6 +201,7 @@
         <p id="instructions"></p>
         <div class="button-row">
           <button id="pick-btn" class="button">Generate Numbers</button>
+          <button id="store-btn" class="button" disabled>Store Pick</button>
           <button id="history-btn" class="button secondary">View Recent Picks</button>
         </div>
         <div id="numbers" class="numbers"></div>
@@ -209,10 +210,18 @@
       const MAIN_COUNT = 5;
       const MAIN_MAX = 47;
       const MEGA_MAX = 27;
+      const STORE_API_URL =
+        "https://uwj7tr8ju8.execute-api.us-west-1.amazonaws.com/prod/api/entries";
       let lastMain = [];
-      document.getElementById(
-        "instructions"
-      ).innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
+      let lastMega = null;
+      const instructionsEl = document.getElementById("instructions");
+      const pickBtn = document.getElementById("pick-btn");
+      const historyBtn = document.getElementById("history-btn");
+      const storeBtn = document.getElementById("store-btn");
+      const numbersDiv = document.getElementById("numbers");
+      const catImg = document.querySelector(".cat-img");
+      const board = document.getElementById("mystic-board");
+      instructionsEl.innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
       function randIntInclusive(min, max) {
         const range = max - min + 1;
         const buf = new Uint32Array(1);
@@ -240,11 +249,9 @@
         }
       }
       function generateNumbers() {
-        const pickBtn = document.getElementById("pick-btn");
-        const numbersDiv = document.getElementById("numbers");
-        const catImg = document.querySelector(".cat-img");
-        const board = document.getElementById("mystic-board");
         pickBtn.disabled = true;
+        storeBtn.disabled = true;
+        storeBtn.textContent = "Store Pick";
         numbersDiv.innerHTML = "";
         catImg.style.animation = "spin 1.5s linear";
         let iteration = 0;
@@ -270,6 +277,7 @@
           megaBall.textContent = mega;
           numbersDiv.appendChild(megaBall);
           lastMain = arr;
+          lastMega = mega;
           mystic.draw(MAIN_MAX, arr);
           if (iteration === 0) board.style.display = "block";
           iteration++;
@@ -277,19 +285,59 @@
             clearInterval(interval);
             clearInterval(sparkleInterval);
             pickBtn.disabled = false;
+            storeBtn.disabled = false;
             catImg.style.animation = "";
           }
         }, 100);
       }
-      document
-        .getElementById("pick-btn")
-        .addEventListener("click", generateNumbers);
-
-      document
-        .getElementById("history-btn")
-        .addEventListener("click", () => {
-          window.location.href = "history.html";
+      async function storePick() {
+        if (!lastMain.length || lastMega === null) {
+          alert("Generate a pick before storing it.");
+          return;
+        }
+        const originalText = storeBtn.textContent;
+        storeBtn.disabled = true;
+        storeBtn.textContent = "Saving…";
+        const picks = lastMain.map((number) => ({
+          Number: number,
+          IsSpecial: false,
+          Name: null,
+        }));
+        picks.push({
+          Number: lastMega,
+          IsSpecial: true,
+          Name: null,
         });
+        const payload = {
+          picks,
+          pickedAt: new Date().toISOString(),
+        };
+        try {
+          const response = await fetch(STORE_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+          }
+          window.location.href = "history.html";
+        } catch (error) {
+          console.error("Failed to store pick", error);
+          alert("Unable to store your pick right now. Please try again.");
+          storeBtn.disabled = false;
+          storeBtn.textContent = originalText;
+        }
+      }
+      pickBtn.addEventListener("click", generateNumbers);
+
+      historyBtn.addEventListener("click", () => {
+        window.location.href = "history.html";
+      });
+
+      storeBtn.addEventListener("click", storePick);
 
       const mystic = (() => {
         const svg = d3.select("#mystic-board");
