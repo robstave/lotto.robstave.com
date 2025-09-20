@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <title>Recent SuperLotto Picks</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-MbPBlC40VY7Miu6QDS48xUDph7K6BLVVZ7UV+pzO0iR6SuOi9I5AE1PSKfCRqu0QL0dXZXMy3ZSNh3aycnBWog=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <style>
       :root {
         --cat-size: 240px;
@@ -85,11 +92,21 @@
       .mega-ball {
         background: #bb65c8;
       }
-      .meta {
-        margin-top: 8px;
-        font-size: 13px;
+      .meta-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
         color: #bda3e6;
-        text-align: left;
+        cursor: help;
+        font-size: 0.95em;
+      }
+      .meta-icon:focus,
+      .meta-icon:hover {
+        color: #f5e3ff;
+      }
+      .meta-icon i {
+        pointer-events: none;
       }
       .button {
         margin-top: 24px;
@@ -176,8 +193,35 @@
           const card = document.createElement("article");
           card.className = "history-item";
 
+          const metaParts = [];
+          if (entry.meta) {
+            if (entry.meta.sourceIp) {
+              metaParts.push(`from ${entry.meta.sourceIp}`);
+            }
+            if (entry.meta.userAgent) {
+              metaParts.push(`via ${entry.meta.userAgent}`);
+            }
+          }
+          const metaText = metaParts.length ? `Picked ${metaParts.join(" ")}` : null;
+
           const heading = document.createElement("h3");
           heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
+          if (metaText) {
+            const iconWrapper = document.createElement("span");
+            iconWrapper.className = "meta-icon";
+            iconWrapper.setAttribute("title", metaText);
+            iconWrapper.setAttribute("role", "img");
+            iconWrapper.setAttribute("aria-label", metaText);
+            iconWrapper.tabIndex = 0;
+
+            const icon = document.createElement("i");
+            icon.className = "fa-solid fa-circle-info";
+            icon.setAttribute("aria-hidden", "true");
+            iconWrapper.appendChild(icon);
+
+            heading.appendChild(document.createTextNode(" "));
+            heading.appendChild(iconWrapper);
+          }
           card.appendChild(heading);
 
           const numbersWrap = document.createElement("div");
@@ -192,22 +236,6 @@
             numbersWrap.appendChild(ball);
           });
           card.appendChild(numbersWrap);
-
-          if (entry.meta) {
-            const metaParts = [];
-            if (entry.meta.sourceIp) {
-              metaParts.push(`from ${entry.meta.sourceIp}`);
-            }
-            if (entry.meta.userAgent) {
-              metaParts.push(`via ${entry.meta.userAgent}`);
-            }
-            if (metaParts.length) {
-              const meta = document.createElement("div");
-              meta.className = "meta";
-              meta.textContent = `Picked ${metaParts.join(" ")}`;
-              card.appendChild(meta);
-            }
-          }
 
           historyList.appendChild(card);
         });
