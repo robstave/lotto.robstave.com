@@ -4,111 +4,16 @@
     <meta charset="UTF-8" />
     <title>Recent SuperLotto Picks</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
   </head>
   <body class="history-page">
     <div class="container">
       <h2>Recent SuperLotto Picks</h2>
       <p class="intro">The last 20 draws recorded by the mystic cat.</p>
-      <p id="status" class="status" role="status">Loading recent picks…</p>
+      <p id="status" class="status" role="status">Loading recent picks...</p>
       <div id="history-list" class="history-list" aria-live="polite"></div>
       <button id="back-btn" class="button">Back to Picker</button>
     </div>
-    <script>
-      const API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries?limit=20";
-      const statusEl = document.getElementById("status");
-      const historyList = document.getElementById("history-list");
-
-      async function loadHistory() {
-        try {
-          const response = await fetch(API_URL, { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
-          }
-          const data = await response.json();
-          renderHistory(Array.isArray(data.items) ? data.items : []);
-        } catch (err) {
-          statusEl.textContent = "Unable to load picks right now. Please try again later.";
-          console.error("Failed to load history", err);
-        }
-      }
-
-      function formatDate(value) {
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
-          return value;
-        }
-        try {
-          return date.toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          });
-        } catch (e) {
-          return date.toLocaleString();
-        }
-      }
-
-      function renderHistory(items) {
-        historyList.innerHTML = "";
-        if (!items.length) {
-          statusEl.textContent = "No previous picks have been recorded yet.";
-          return;
-        }
-        statusEl.textContent = "";
-        const sorted = [...items].sort((a, b) => {
-          const timeA = new Date(a.pickedAt).getTime();
-          const timeB = new Date(b.pickedAt).getTime();
-          if (Number.isNaN(timeA) || Number.isNaN(timeB)) {
-            return 0;
-          }
-          return timeB - timeA;
-        });
-
-        sorted.forEach((entry, index) => {
-          const card = document.createElement("article");
-          card.className = "history-item";
-
-          const heading = document.createElement("h3");
-          heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
-          card.appendChild(heading);
-
-          const numbersWrap = document.createElement("div");
-          numbersWrap.className = "numbers";
-          (entry.picks || []).forEach((pick) => {
-            const ball = document.createElement("span");
-            ball.className = "number-ball";
-            if (pick.IsSpecial) {
-              ball.classList.add("mega-ball");
-            }
-            ball.textContent = pick.Number;
-            numbersWrap.appendChild(ball);
-          });
-          card.appendChild(numbersWrap);
-
-          if (entry.meta) {
-            const metaParts = [];
-            if (entry.meta.sourceIp) {
-              metaParts.push(`from ${entry.meta.sourceIp}`);
-            }
-            if (entry.meta.userAgent) {
-              metaParts.push(`via ${entry.meta.userAgent}`);
-            }
-            if (metaParts.length) {
-              const meta = document.createElement("div");
-              meta.className = "meta";
-              meta.textContent = `Picked ${metaParts.join(" ")}`;
-              card.appendChild(meta);
-            }
-          }
-
-          historyList.appendChild(card);
-        });
-      }
-
-      document.getElementById("back-btn").addEventListener("click", () => {
-        window.location.href = "index.html";
-      });
-
-      loadHistory();
-    </script>
+    
   </body>
 </html>
