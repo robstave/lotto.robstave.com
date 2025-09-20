@@ -35,6 +35,11 @@ body {
   overflow: visible;
 }
 
+.detail-page .container {
+  max-width: 640px;
+  overflow: visible;
+}
+
 h2 {
   margin: 0;
   color: #f0e8ff;
@@ -78,6 +83,12 @@ p {
 
 .button.secondary:hover {
   background: #6654b8;
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .button-row {
@@ -242,6 +253,10 @@ p {
   width: 100%;
 }
 
+.history-list.single {
+  gap: 0;
+}
+
 .history-item {
   background: rgba(63, 27, 97, 0.75);
   border-radius: 12px;
@@ -268,4 +283,30 @@ p {
   font-size: 13px;
   color: #bda3e6;
   text-align: left;
+}
+
+.card-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.card-actions .button {
+  margin-top: 0;
+}
+
+.raw-link {
+  margin-top: 16px;
+  color: #c8b4ff;
+  text-decoration: underline;
+  font-size: 13px;
+  align-self: flex-start;
+}
+
+.raw-link:hover {
+  color: #e2d8ff;
+}
+
+.hidden {
+  display: none !important;
 }

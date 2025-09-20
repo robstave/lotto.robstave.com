@@ -1,6 +1,10 @@
 (function () {
   "use strict";
 
+  const API_ROOT = "https://d2zi62cpjup4kp.cloudfront.net/api/";
+  const STORE_API_URL = `${API_ROOT}entries`;
+  const HISTORY_API_URL = `${STORE_API_URL}?limit=20`;
+
   document.addEventListener("DOMContentLoaded", () => {
     const body = document.body;
     if (!body) {
@@ -10,14 +14,165 @@
       initPickerPage();
     } else if (body.classList.contains("history-page")) {
       initHistoryPage();
+    } else if (body.classList.contains("detail-page")) {
+      initDetailPage();
     }
   });
+
+  function formatDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    try {
+      return date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch (e) {
+      return date.toLocaleString();
+    }
+  }
+
+  function extractEntryKey(entry) {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    if (typeof entry.key === "string" && entry.key.trim()) {
+      return entry.key.trim();
+    }
+    if (typeof entry.Key === "string" && entry.Key.trim()) {
+      return entry.Key.trim();
+    }
+    if (entry.item) {
+      return extractEntryKey(entry.item);
+    }
+    return null;
+  }
+
+  function normalizeKey(rawKey) {
+    if (typeof rawKey !== "string") {
+      return null;
+    }
+    const trimmed = rawKey.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter((segment) => segment && segment !== "." && segment !== "..")
+      .join("/");
+  }
+
+  function buildEntryRequestUrl(rawKey) {
+    const normalized = normalizeKey(rawKey);
+    if (!normalized) {
+      return null;
+    }
+    let path = normalized;
+    if (path.slice(0, 4).toLowerCase() === "api/") {
+      path = path.slice(4);
+    }
+    if (path.slice(0, 8).toLowerCase() !== "entries/") {
+      path = `entries/${path}`;
+    }
+    return `${API_ROOT}${path}`;
+  }
+
+  function createEntryCard(entry, options = {}) {
+    const { index = null, headingText, onDetails, showKey = false } = options;
+
+    const card = document.createElement("article");
+    card.className = "history-item";
+
+    const heading = document.createElement("h3");
+    const formattedDate = formatDate(entry && entry.pickedAt);
+    if (typeof headingText === "string" && headingText.trim()) {
+      heading.textContent = headingText.trim();
+    } else if (typeof index === "number") {
+      heading.textContent = `${index + 1}. ${formattedDate || "Unknown time"}`;
+    } else if (formattedDate) {
+      heading.textContent = `Picked ${formattedDate}`;
+    } else {
+      heading.textContent = "Pick details";
+    }
+    card.appendChild(heading);
+
+    const numbersWrap = document.createElement("div");
+    numbersWrap.className = "numbers";
+    const picks = Array.isArray(entry && entry.picks) ? entry.picks : [];
+    if (picks.length) {
+      picks.forEach((pick) => {
+        const ball = document.createElement("span");
+        ball.className = "number-ball";
+        if (pick && pick.IsSpecial) {
+          ball.classList.add("mega-ball");
+        }
+        ball.textContent = pick && pick.Number !== undefined ? pick.Number : "?";
+        numbersWrap.appendChild(ball);
+      });
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "meta";
+      empty.textContent = "No numbers recorded for this pick.";
+      numbersWrap.appendChild(empty);
+    }
+    card.appendChild(numbersWrap);
+
+    if (entry && entry.meta) {
+      const metaParts = [];
+      if (entry.meta.sourceIp) {
+        metaParts.push(`from ${entry.meta.sourceIp}`);
+      }
+      if (entry.meta.userAgent) {
+        metaParts.push(`via ${entry.meta.userAgent}`);
+      }
+      if (metaParts.length) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = `Picked ${metaParts.join(" ")}`;
+        card.appendChild(meta);
+      }
+    }
+
+    if (showKey) {
+      const entryKey = extractEntryKey(entry);
+      if (entryKey) {
+        const keyEl = document.createElement("div");
+        keyEl.className = "meta";
+        keyEl.textContent = `Storage key: ${entryKey}`;
+        card.appendChild(keyEl);
+      }
+    }
+
+    if (typeof onDetails === "function") {
+      const actions = document.createElement("div");
+      actions.className = "card-actions";
+      const detailsBtn = document.createElement("button");
+      detailsBtn.type = "button";
+      detailsBtn.className = "button secondary";
+      const entryKey = extractEntryKey(entry);
+      if (entryKey) {
+        detailsBtn.textContent = "Details";
+        detailsBtn.addEventListener("click", () => onDetails(entryKey));
+      } else {
+        detailsBtn.textContent = "Details Unavailable";
+        detailsBtn.disabled = true;
+        detailsBtn.setAttribute("aria-disabled", "true");
+        detailsBtn.title = "This entry does not include a stored key.";
+      }
+      actions.appendChild(detailsBtn);
+      card.appendChild(actions);
+    }
+
+    return card;
+  }
 
   function initPickerPage() {
     const MAIN_COUNT = 5;
     const MAIN_MAX = 47;
     const MEGA_MAX = 27;
-    const STORE_API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
 
     const instructionsEl = document.getElementById("instructions");
     const pickBtn = document.getElementById("pick-btn");
@@ -333,7 +488,6 @@
   }
 
   function initHistoryPage() {
-    const API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries?limit=20";
     const statusEl = document.getElementById("status");
     const historyList = document.getElementById("history-list");
     const backBtn = document.getElementById("back-btn");
@@ -345,7 +499,7 @@
 
     async function loadHistory() {
       try {
-        const response = await fetch(API_URL, { cache: "no-store" });
+        const response = await fetch(HISTORY_API_URL, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
@@ -354,21 +508,6 @@
       } catch (err) {
         statusEl.textContent = "Unable to load picks right now. Please try again later.";
         console.error("Failed to load history", err);
-      }
-    }
-
-    function formatDate(value) {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) {
-        return value;
-      }
-      try {
-        return date.toLocaleString(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        });
-      } catch (e) {
-        return date.toLocaleString();
       }
     }
 
@@ -389,42 +528,14 @@
       });
 
       sorted.forEach((entry, index) => {
-        const card = document.createElement("article");
-        card.className = "history-item";
-
-        const heading = document.createElement("h3");
-        heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
-        card.appendChild(heading);
-
-        const numbersWrap = document.createElement("div");
-        numbersWrap.className = "numbers";
-        (entry.picks || []).forEach((pick) => {
-          const ball = document.createElement("span");
-          ball.className = "number-ball";
-          if (pick.IsSpecial) {
-            ball.classList.add("mega-ball");
-          }
-          ball.textContent = pick.Number;
-          numbersWrap.appendChild(ball);
+        const card = createEntryCard(entry, {
+          index,
+          onDetails: (entryKey) => {
+            const detailUrl = new URL("details.html", window.location.href);
+            detailUrl.searchParams.set("key", entryKey);
+            window.location.href = detailUrl.toString();
+          },
         });
-        card.appendChild(numbersWrap);
-
-        if (entry.meta) {
-          const metaParts = [];
-          if (entry.meta.sourceIp) {
-            metaParts.push(`from ${entry.meta.sourceIp}`);
-          }
-          if (entry.meta.userAgent) {
-            metaParts.push(`via ${entry.meta.userAgent}`);
-          }
-          if (metaParts.length) {
-            const meta = document.createElement("div");
-            meta.className = "meta";
-            meta.textContent = `Picked ${metaParts.join(" ")}`;
-            card.appendChild(meta);
-          }
-        }
-
         historyList.appendChild(card);
       });
     }
@@ -434,5 +545,78 @@
     });
 
     loadHistory();
+  }
+
+  function initDetailPage() {
+    const statusEl = document.getElementById("status");
+    const detailContainer = document.getElementById("entry-detail");
+    const historyBtn = document.getElementById("history-back-btn");
+    const homeBtn = document.getElementById("home-btn");
+    const rawLink = document.getElementById("raw-link");
+
+    if (!statusEl || !detailContainer || !historyBtn || !homeBtn) {
+      console.error("Detail page markup is missing required elements.");
+      return;
+    }
+
+    historyBtn.addEventListener("click", () => {
+      window.location.href = "history.html";
+    });
+
+    homeBtn.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const rawKey = params.get("key");
+    const requestUrl = buildEntryRequestUrl(rawKey || "");
+
+    if (!rawKey) {
+      statusEl.textContent = "No entry key was provided.";
+      return;
+    }
+
+    if (!requestUrl) {
+      statusEl.textContent = "The entry key provided is invalid.";
+      return;
+    }
+
+    async function loadEntryDetails() {
+      statusEl.textContent = "Loading entry details...";
+      detailContainer.innerHTML = "";
+      try {
+        const response = await fetch(requestUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        const entry = data && typeof data === "object" && data.item ? data.item : data;
+        if (!entry || typeof entry !== "object") {
+          throw new Error("Entry payload was not in the expected format.");
+        }
+        const headingText = entry.pickedAt
+          ? `Picked ${formatDate(entry.pickedAt)}`
+          : "Pick details";
+        const card = createEntryCard(entry, {
+          headingText,
+          showKey: true,
+        });
+        detailContainer.appendChild(card);
+        statusEl.textContent = "";
+        if (rawLink) {
+          rawLink.href = requestUrl;
+          rawLink.classList.remove("hidden");
+        }
+      } catch (err) {
+        console.error("Failed to load entry details", err);
+        statusEl.textContent =
+          "Unable to load entry details right now. Please try again later.";
+        if (rawLink) {
+          rawLink.classList.add("hidden");
+        }
+      }
+    }
+
+    loadEntryDetails();
   }
 })();
