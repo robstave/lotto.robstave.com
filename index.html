@@ -221,6 +221,21 @@
       const catImg = document.querySelector(".cat-img");
       const board = document.getElementById("mystic-board");
       instructionsEl.innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
+      async function fetchWithTimeout(resource, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          return await fetch(resource, {
+            mode: "cors",
+            cache: "no-store",
+            credentials: "omit",
+            signal: controller.signal,
+            ...options,
+          });
+        } finally {
+          clearTimeout(id);
+        }
+      }
       function randIntInclusive(min, max) {
         const range = max - min + 1;
         const buf = new Uint32Array(1);
@@ -312,20 +327,54 @@
           pickedAt: new Date().toISOString(),
         };
         try {
-          const response = await fetch(STORE_API_URL, {
+          const resp = await fetchWithTimeout(STORE_API_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Accept": "application/json",
             },
             body: JSON.stringify(payload),
           });
-          if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => "");
+            console.error("StorePick failed", {
+              status: resp.status,
+              statusText: resp.statusText,
+              body: text,
+            });
+            if (resp.status === 415 || resp.status === 400)
+              throw new Error("Server rejected JSON; trying fallback");
+            throw new Error(`Request failed with status ${resp.status}`);
           }
           window.location.href = "history.html";
-        } catch (error) {
-          console.error("Failed to store pick", error);
-          alert("Unable to store your pick right now. Please try again.");
+          return;
+        } catch (err) {
+          console.warn("First attempt failed (likely CORS/preflight)", err);
+        }
+        try {
+          const resp2 = await fetchWithTimeout(STORE_API_URL, {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!resp2.ok) {
+            const text2 = await resp2.text().catch(() => "");
+            console.error("StorePick fallback failed", {
+              status: resp2.status,
+              statusText: resp2.statusText,
+              body: text2,
+            });
+            throw new Error(`Fallback failed with status ${resp2.status}`);
+          }
+          window.location.href = "history.html";
+          return;
+        } catch (finalErr) {
+          console.error("Unable to store pick after fallback", finalErr);
+          alert(
+            "Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later."
+          );
           storeBtn.disabled = false;
           storeBtn.textContent = originalText;
         }
