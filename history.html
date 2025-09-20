@@ -93,13 +93,14 @@
         background: #bb65c8;
       }
       .meta-icon {
+        position: relative;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         margin-left: 8px;
-        color: #bda3e6;
+        color: #ffffff; /* Make icon more visible */
         cursor: help;
-        font-size: 0.95em;
+        font-size: 1.2em; /* Slightly larger */
       }
       .meta-icon:focus,
       .meta-icon:hover {
@@ -107,6 +108,43 @@
       }
       .meta-icon i {
         pointer-events: none;
+      }
+      /* Tooltip bubble */
+      .tooltip-bubble {
+        position: absolute;
+        bottom: 140%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2e2150;
+        color: #f0e8ff;
+        padding: 8px 10px;
+        border-radius: 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+        font-size: 12px;
+        line-height: 1.3;
+        max-width: 320px;
+        width: max-content;
+        opacity: 0; /* Revert to normal behavior */
+        pointer-events: none;
+        transition: opacity 0.15s ease-in-out;
+        z-index: 10;
+        white-space: normal;
+      }
+      .tooltip-bubble::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 6px;
+        border-style: solid;
+        border-color: #2e2150 transparent transparent transparent;
+      }
+      .meta-icon:hover .tooltip-bubble,
+      .meta-icon:focus .tooltip-bubble,
+      .meta-icon:focus-visible .tooltip-bubble {
+        opacity: 1;
+        pointer-events: auto;
       }
       .button {
         margin-top: 24px;
@@ -190,6 +228,7 @@
         });
 
         sorted.forEach((entry, index) => {
+          console.log('Entry data:', entry); // Debug: log the entry to see its structure
           const card = document.createElement("article");
           card.className = "history-item";
 
@@ -202,22 +241,36 @@
               metaParts.push(`via ${entry.meta.userAgent}`);
             }
           }
-          const metaText = metaParts.length ? `Picked ${metaParts.join(" ")}` : null;
+          const metaText = metaParts.length ? `Picked ${metaParts.join(" ")}` : (entry.meta ? JSON.stringify(entry.meta, null, 2) : null);
 
           const heading = document.createElement("h3");
           heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
           if (metaText) {
             const iconWrapper = document.createElement("span");
             iconWrapper.className = "meta-icon";
-            iconWrapper.setAttribute("title", metaText);
+            iconWrapper.setAttribute("title", metaText); // native tooltip fallback
             iconWrapper.setAttribute("role", "img");
             iconWrapper.setAttribute("aria-label", metaText);
             iconWrapper.tabIndex = 0;
+
+            // Add click event to toggle tooltip
+            iconWrapper.addEventListener('click', (e) => {
+              e.preventDefault();
+              const bubble = iconWrapper.querySelector('.tooltip-bubble');
+              const isVisible = bubble.style.opacity === '1';
+              bubble.style.opacity = isVisible ? '0' : '1';
+              bubble.style.pointerEvents = isVisible ? 'none' : 'auto';
+            });
 
             const icon = document.createElement("i");
             icon.className = "fa-solid fa-circle-info";
             icon.setAttribute("aria-hidden", "true");
             iconWrapper.appendChild(icon);
+
+            const bubble = document.createElement("span");
+            bubble.className = "tooltip-bubble";
+            bubble.textContent = metaText;
+            iconWrapper.appendChild(bubble);
 
             heading.appendChild(document.createTextNode(" "));
             heading.appendChild(iconWrapper);
