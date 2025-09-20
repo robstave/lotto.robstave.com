@@ -69,6 +69,31 @@
       .button:hover {
         background: #916ce0;
       }
+      .button.secondary {
+        background: #5440a3;
+      }
+      .button.secondary:hover {
+        background: #6654b8;
+      }
+      .button-row {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        width: 100%;
+      }
+      .button-row .button {
+        margin-top: 0;
+      }
+      @media (min-width: 480px) {
+        .button-row {
+          flex-direction: row;
+          justify-content: center;
+        }
+        .button-row .button {
+          flex: 1;
+        }
+      }
       .numbers {
         margin-top: 24px;
         display: flex;
@@ -174,7 +199,10 @@
         </div>
         <h2>SuperLotto Plus Picker</h2>
         <p id="instructions"></p>
-        <button id="pick-btn" class="button">Generate Numbers</button>
+        <div class="button-row">
+          <button id="pick-btn" class="button">Generate Numbers</button>
+          <button id="history-btn" class="button secondary">View Recent Picks</button>
+        </div>
         <div id="numbers" class="numbers"></div>
       </div>
     <script>
@@ -256,6 +284,12 @@
       document
         .getElementById("pick-btn")
         .addEventListener("click", generateNumbers);
+
+      document
+        .getElementById("history-btn")
+        .addEventListener("click", () => {
+          window.location.href = "history.html";
+        });
 
       const mystic = (() => {
         const svg = d3.select("#mystic-board");
