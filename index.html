@@ -221,6 +221,22 @@
       const catImg = document.querySelector(".cat-img");
       const board = document.getElementById("mystic-board");
       instructionsEl.innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
+      async function fetchWithTimeout(resource, options = {}, timeoutMs = 10000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal,
+            mode: "cors",
+            cache: "no-store",
+            credentials: "omit",
+          });
+          return response;
+        } finally {
+          clearTimeout(id);
+        }
+      }
       function randIntInclusive(min, max) {
         const range = max - min + 1;
         const buf = new Uint32Array(1);
@@ -297,45 +313,61 @@
         const originalText = storeBtn.textContent;
         storeBtn.disabled = true;
         storeBtn.textContent = "Saving…";
-        const picks = lastMain.map((number) => ({
-          Number: number,
-          IsSpecial: false,
-          Name: null,
-        }));
-        picks.push({
-          Number: lastMega,
-          IsSpecial: true,
-          Name: null,
-        });
-        const payload = {
-          picks,
-          pickedAt: new Date().toISOString(),
-        };
+
+        const picks = lastMain.map((number) => ({ Number: number, IsSpecial: false, Name: null }));
+        picks.push({ Number: lastMega, IsSpecial: true, Name: null });
+        const payload = { picks, pickedAt: new Date().toISOString() };
+
+        // Attempt 1: standard JSON POST
         try {
-          const response = await fetch(STORE_API_URL, {
+          const resp = await fetchWithTimeout(STORE_API_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
             body: JSON.stringify(payload),
-          });
-          if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
+          }, 12000);
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => "");
+            console.error("StorePick failed:", { status: resp.status, statusText: resp.statusText, body: text });
+            // If it's a typical unsupported preflight scenario, try a fallback below
+            if (resp.status === 415 || resp.status === 400) throw new Error("Server rejected JSON; trying fallback");
+            throw new Error(`Request failed with status ${resp.status}`);
           }
+
+          // Success
           window.location.href = "history.html";
-        } catch (error) {
-          console.error("Failed to store pick", error);
-          alert("Unable to store your pick right now. Please try again.");
+          return;
+        } catch (err) {
+          console.warn("First attempt to store pick failed:", err);
+        }
+
+        // Attempt 2 (fallback): text/plain without Content-Type json to avoid preflight
+        try {
+          const resp2 = await fetchWithTimeout(STORE_API_URL, {
+            method: "POST",
+            // Intentionally omit Content-Type to keep it CORS-safelisted (text/plain)
+            headers: { Accept: "application/json" },
+            body: JSON.stringify(payload),
+          }, 12000);
+
+          if (!resp2.ok) {
+            const text2 = await resp2.text().catch(() => "");
+            console.error("StorePick fallback failed:", { status: resp2.status, statusText: resp2.statusText, body: text2 });
+            throw new Error(`Fallback failed with status ${resp2.status}`);
+          }
+
+          // Success via fallback
+          window.location.href = "history.html";
+          return;
+        } catch (finalErr) {
+          console.error("Unable to store pick after fallback:", finalErr);
+          alert("Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later.");
           storeBtn.disabled = false;
           storeBtn.textContent = originalText;
         }
       }
       pickBtn.addEventListener("click", generateNumbers);
-
-      historyBtn.addEventListener("click", () => {
-        window.location.href = "history.html";
-      });
-
+      historyBtn.addEventListener("click", () => { window.location.href = "history.html"; });
       storeBtn.addEventListener("click", storePick);
 
       const mystic = (() => {
