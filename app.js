@@ -86,7 +86,50 @@
       return order;
     }
 
-    function draw(totalPositions, picks) {
+    function sanitizeSpecial(rawSpecial, fallbackLimit) {
+      if (rawSpecial === null || rawSpecial === undefined) {
+        return null;
+      }
+
+      const baseLimit =
+        Number.isFinite(fallbackLimit) && fallbackLimit > 0 ? fallbackLimit : null;
+
+      let valueCandidate;
+      let limitCandidate = baseLimit;
+
+      if (typeof rawSpecial === "object") {
+        const source = rawSpecial;
+        valueCandidate =
+          source.value ?? source.number ?? source.n ?? source.pick ?? source;
+        const possibleLimits = [source.max, source.limit, source.total];
+        for (const option of possibleLimits) {
+          const parsed = Number.parseInt(option, 10);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            limitCandidate = parsed;
+            break;
+          }
+        }
+      } else {
+        valueCandidate = rawSpecial;
+      }
+
+      const value = Number.parseInt(valueCandidate, 10);
+      if (!Number.isFinite(value)) {
+        return null;
+      }
+
+      if (!Number.isFinite(limitCandidate) || limitCandidate <= 0) {
+        return null;
+      }
+
+      if (value < 1 || value > limitCandidate) {
+        return null;
+      }
+
+      return { value, limit: limitCandidate };
+    }
+
+    function draw(totalPositions, picks, specialPick) {
       g.selectAll("*").remove();
       const w = size();
 
@@ -103,66 +146,85 @@
       const R = w * 0.5;
       const rNode = Math.max(2, w * 0.006);
 
+      const special = sanitizeSpecial(specialPick, limit ?? totalPositions);
+
       g.append("circle")
         .attr("r", R)
         .attr("fill", "none")
         .attr("stroke", "#1a1c2a")
         .attr("stroke-width", 1.2);
 
-      if (!totalPositions || !sanitized.length) {
+      if ((!limit || !sanitized.length) && !special) {
         return;
       }
 
-      const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
-      const verts = sanitized
-        .map((n) => ({ n, a: toAngle(n) }))
-        .sort((a, b) => a.a - b.a);
+      let verts = [];
+      if (limit && sanitized.length) {
+        const toAngle = (n) => ((n - 1) / limit) * Math.PI * 2 - Math.PI / 2;
+        verts = sanitized
+          .map((n) => ({ n, a: toAngle(n) }))
+          .sort((a, b) => a.a - b.a);
 
-      if (!verts.length) {
-        return;
+        if (verts.length) {
+          const order = starOrder(verts.length);
+
+          const path = d3.path();
+          const first = polarToXY(verts[order[0]].a, R);
+          path.moveTo(first[0], first[1]);
+          for (let i = 1; i < order.length; i++) {
+            const p = polarToXY(verts[order[i]].a, R);
+            path.lineTo(p[0], p[1]);
+          }
+          path.closePath();
+
+          const chord = g
+            .append("path")
+            .attr("class", "chord")
+            .attr("d", path.toString())
+            .attr("fill", "none")
+            .attr("stroke", "url(#gradStroke)")
+            .attr("stroke-width", Math.max(1.5, w * 0.004))
+            .attr("filter", "url(#glow)")
+            .attr("stroke-linejoin", "round");
+
+          const length = chord.node().getTotalLength();
+          chord
+            .attr("stroke-dasharray", length)
+            .attr("stroke-dashoffset", length)
+            .transition()
+            .duration(1200)
+            .ease(d3.easeCubicOut)
+            .attr("stroke-dashoffset", 0);
+
+          g.selectAll(".node")
+            .data(verts)
+            .enter()
+            .append("circle")
+            .attr("class", "node")
+            .attr("cx", (d) => polarToXY(d.a, R)[0])
+            .attr("cy", (d) => polarToXY(d.a, R)[1])
+            .attr("r", rNode)
+            .attr("fill", "#ffd8ff")
+            .attr("opacity", 0.85)
+            .attr("filter", "url(#glow)");
+        }
       }
 
-      const order = starOrder(verts.length);
-
-      const path = d3.path();
-      const first = polarToXY(verts[order[0]].a, R);
-      path.moveTo(first[0], first[1]);
-      for (let i = 1; i < order.length; i++) {
-        const p = polarToXY(verts[order[i]].a, R);
-        path.lineTo(p[0], p[1]);
+      if (special) {
+        const specialAngle =
+          ((special.value - 1) / special.limit) * Math.PI * 2 - Math.PI / 2;
+        const [sx, sy] = polarToXY(specialAngle, R);
+        g.append("circle")
+          .attr("class", "special-node")
+          .attr("cx", sx)
+          .attr("cy", sy)
+          .attr("r", Math.max(rNode * 1.8, w * 0.012))
+          .attr("fill", "#ff4d6d")
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", Math.max(1, w * 0.0025))
+          .attr("opacity", 0.95)
+          .attr("filter", "url(#glow)");
       }
-      path.closePath();
-
-      const chord = g
-        .append("path")
-        .attr("class", "chord")
-        .attr("d", path.toString())
-        .attr("fill", "none")
-        .attr("stroke", "url(#gradStroke)")
-        .attr("stroke-width", Math.max(1.5, w * 0.004))
-        .attr("filter", "url(#glow)")
-        .attr("stroke-linejoin", "round");
-
-      const length = chord.node().getTotalLength();
-      chord
-        .attr("stroke-dasharray", length)
-        .attr("stroke-dashoffset", length)
-        .transition()
-        .duration(1200)
-        .ease(d3.easeCubicOut)
-        .attr("stroke-dashoffset", 0);
-
-      g.selectAll(".node")
-        .data(verts)
-        .enter()
-        .append("circle")
-        .attr("class", "node")
-        .attr("cx", (d) => polarToXY(d.a, R)[0])
-        .attr("cy", (d) => polarToXY(d.a, R)[1])
-        .attr("r", rNode)
-        .attr("fill", "#ffd8ff")
-        .attr("opacity", 0.85)
-        .attr("filter", "url(#glow)");
     }
 
     return { draw };
@@ -266,7 +328,7 @@
         numbersDiv.appendChild(megaBall);
         lastMain = arr;
         lastMega = mega;
-        mystic.draw(MAIN_MAX, arr);
+        mystic.draw(MAIN_MAX, arr, { value: mega, max: MEGA_MAX });
         if (iteration === 0) {
           board.style.display = "block";
         }
@@ -365,7 +427,7 @@
 
     window.addEventListener("resize", () => {
       if (lastMain.length) {
-        mystic.draw(MAIN_MAX, lastMain);
+        mystic.draw(MAIN_MAX, lastMain, { value: lastMega, max: MEGA_MAX });
       }
     });
   }
@@ -481,9 +543,11 @@
         const mainNumbers = (entry.picks || [])
           .filter((pick) => !pick.IsSpecial)
           .map((pick) => pick.Number);
+        const specialPick = (entry.picks || []).find((pick) => pick.IsSpecial);
+        const special = specialPick ? { value: specialPick.Number, max: MEGA_MAX } : null;
         try {
           const board = createMysticBoard(svg);
-          const render = () => board.draw(MAIN_MAX, mainNumbers);
+          const render = () => board.draw(MAIN_MAX, mainNumbers, special);
           if (typeof requestAnimationFrame === "function") {
             requestAnimationFrame(render);
           } else {
