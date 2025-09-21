@@ -1,6 +1,10 @@
 (function () {
   "use strict";
 
+  const MAIN_COUNT = 5;
+  const MAIN_MAX = 47;
+  const MEGA_MAX = 27;
+
   document.addEventListener("DOMContentLoaded", () => {
     const body = document.body;
     if (!body) {
@@ -13,10 +17,158 @@
     }
   });
 
+  function createMysticBoard(svgElement) {
+    if (!svgElement) {
+      throw new Error("Mystic board SVG element is required");
+    }
+
+    const svg = d3.select(svgElement);
+    svg.selectAll("*").remove();
+
+    const g = svg.append("g");
+    const defs = svg.append("defs");
+
+    const glow = defs.append("filter").attr("id", "glow");
+    glow
+      .append("feGaussianBlur")
+      .attr("stdDeviation", 3)
+      .attr("result", "coloredBlur");
+    const feMerge = glow.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "coloredBlur");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    const grad = defs
+      .append("linearGradient")
+      .attr("id", "gradStroke")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%");
+    grad.append("stop").attr("offset", "0%").attr("stop-color", "#c9b5ff");
+    grad.append("stop").attr("offset", "50%").attr("stop-color", "#a88bff");
+    grad
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#e0d7ff");
+
+    svg.attr("preserveAspectRatio", "xMidYMid meet");
+
+    function size() {
+      const rect = svgElement.getBoundingClientRect();
+      const fallback =
+        Number.parseFloat(svgElement.getAttribute("data-size")) ||
+        Number.parseFloat(svgElement.getAttribute("width")) ||
+        Number.parseFloat(svgElement.getAttribute("height")) ||
+        120;
+      const dimension =
+        rect.width > 0
+          ? rect.width
+          : rect.height > 0
+          ? rect.height
+          : fallback;
+      svg.attr("viewBox", `0 0 ${dimension} ${dimension}`);
+      g.attr("transform", `translate(${dimension / 2},${dimension / 2})`);
+      return dimension;
+    }
+
+    function polarToXY(angle, r) {
+      return [Math.cos(angle) * r, Math.sin(angle) * r];
+    }
+
+    function starOrder(k) {
+      const step = Math.max(2, Math.floor(k / 2));
+      const order = [];
+      let i = 0;
+      for (let n = 0; n < k; n++) {
+        order.push(i);
+        i = (i + step) % k;
+      }
+      return order;
+    }
+
+    function draw(totalPositions, picks) {
+      g.selectAll("*").remove();
+      const w = size();
+
+      const limit = Number.isFinite(totalPositions) && totalPositions > 0 ? totalPositions : null;
+      const sanitized = Array.from(
+        new Set(
+          (Array.isArray(picks) ? picks : [])
+            .map((value) => Number.parseInt(value, 10))
+            .filter((value) => Number.isFinite(value))
+            .filter((value) => value >= 1 && (limit === null || value <= limit))
+        )
+      );
+
+      const R = w * 0.5;
+      const rNode = Math.max(2, w * 0.006);
+
+      g.append("circle")
+        .attr("r", R)
+        .attr("fill", "none")
+        .attr("stroke", "#1a1c2a")
+        .attr("stroke-width", 1.2);
+
+      if (!totalPositions || !sanitized.length) {
+        return;
+      }
+
+      const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
+      const verts = sanitized
+        .map((n) => ({ n, a: toAngle(n) }))
+        .sort((a, b) => a.a - b.a);
+
+      if (!verts.length) {
+        return;
+      }
+
+      const order = starOrder(verts.length);
+
+      const path = d3.path();
+      const first = polarToXY(verts[order[0]].a, R);
+      path.moveTo(first[0], first[1]);
+      for (let i = 1; i < order.length; i++) {
+        const p = polarToXY(verts[order[i]].a, R);
+        path.lineTo(p[0], p[1]);
+      }
+      path.closePath();
+
+      const chord = g
+        .append("path")
+        .attr("class", "chord")
+        .attr("d", path.toString())
+        .attr("fill", "none")
+        .attr("stroke", "url(#gradStroke)")
+        .attr("stroke-width", Math.max(1.5, w * 0.004))
+        .attr("filter", "url(#glow)")
+        .attr("stroke-linejoin", "round");
+
+      const length = chord.node().getTotalLength();
+      chord
+        .attr("stroke-dasharray", length)
+        .attr("stroke-dashoffset", length)
+        .transition()
+        .duration(1200)
+        .ease(d3.easeCubicOut)
+        .attr("stroke-dashoffset", 0);
+
+      g.selectAll(".node")
+        .data(verts)
+        .enter()
+        .append("circle")
+        .attr("class", "node")
+        .attr("cx", (d) => polarToXY(d.a, R)[0])
+        .attr("cy", (d) => polarToXY(d.a, R)[1])
+        .attr("r", rNode)
+        .attr("fill", "#ffd8ff")
+        .attr("opacity", 0.85)
+        .attr("filter", "url(#glow)");
+    }
+
+    return { draw };
+  }
+
   function initPickerPage() {
-    const MAIN_COUNT = 5;
-    const MAIN_MAX = 47;
-    const MEGA_MAX = 27;
     const STORE_API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
 
     const instructionsEl = document.getElementById("instructions");
@@ -82,7 +234,7 @@
       }
     }
 
-    const mystic = createMystic();
+    const mystic = createMysticBoard(document.getElementById("mystic-board"));
 
     function generateNumbers() {
       pickBtn.disabled = true;
@@ -216,120 +368,6 @@
         mystic.draw(MAIN_MAX, lastMain);
       }
     });
-
-    function createMystic() {
-      const svg = d3.select("#mystic-board");
-      const g = svg.append("g");
-      const defs = svg.append("defs");
-
-      const glow = defs.append("filter").attr("id", "glow");
-      glow
-        .append("feGaussianBlur")
-        .attr("stdDeviation", 3)
-        .attr("result", "coloredBlur");
-      const feMerge = glow.append("feMerge");
-      feMerge.append("feMergeNode").attr("in", "coloredBlur");
-      feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
-      const grad = defs
-        .append("linearGradient")
-        .attr("id", "gradStroke")
-        .attr("x1", "0%")
-        .attr("y1", "0%")
-        .attr("x2", "100%")
-        .attr("y2", "0%");
-      grad.append("stop").attr("offset", "0%").attr("stop-color", "#c9b5ff");
-      grad.append("stop").attr("offset", "50%").attr("stop-color", "#a88bff");
-      grad
-        .append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#e0d7ff");
-
-      function size() {
-        const w = document.getElementById("mystic-board").clientWidth;
-        svg.attr("viewBox", `0 0 ${w} ${w}`);
-        g.attr("transform", `translate(${w / 2},${w / 2})`);
-        return w;
-      }
-
-      function polarToXY(angle, r) {
-        return [Math.cos(angle) * r, Math.sin(angle) * r];
-      }
-
-      function starOrder(k) {
-        const step = Math.max(2, Math.floor(k / 2));
-        const order = [];
-        let i = 0;
-        for (let n = 0; n < k; n++) {
-          order.push(i);
-          i = (i + step) % k;
-        }
-        return order;
-      }
-
-      function draw(totalPositions, picks) {
-        const w = size();
-        g.selectAll("*").remove();
-
-        const R = w * 0.5;
-        const rNode = Math.max(2, w * 0.006);
-
-        g.append("circle")
-          .attr("r", R)
-          .attr("fill", "none")
-          .attr("stroke", "#1a1c2a")
-          .attr("stroke-width", 1.2);
-
-        const toAngle = (n) => ((n - 1) / totalPositions) * Math.PI * 2 - Math.PI / 2;
-        const verts = picks
-          .map((n) => ({ n, a: toAngle(n) }))
-          .sort((a, b) => a.a - b.a);
-
-        const order = starOrder(verts.length);
-
-        const path = d3.path();
-        const first = polarToXY(verts[order[0]].a, R);
-        path.moveTo(first[0], first[1]);
-        for (let i = 1; i < order.length; i++) {
-          const p = polarToXY(verts[order[i]].a, R);
-          path.lineTo(p[0], p[1]);
-        }
-        path.closePath();
-
-        const chord = g
-          .append("path")
-          .attr("class", "chord")
-          .attr("d", path.toString())
-          .attr("fill", "none")
-          .attr("stroke", "url(#gradStroke)")
-          .attr("stroke-width", Math.max(1.5, w * 0.004))
-          .attr("filter", "url(#glow)")
-          .attr("stroke-linejoin", "round");
-
-        const length = chord.node().getTotalLength();
-        chord
-          .attr("stroke-dasharray", length)
-          .attr("stroke-dashoffset", length)
-          .transition()
-          .duration(1200)
-          .ease(d3.easeCubicOut)
-          .attr("stroke-dashoffset", 0);
-
-        g.selectAll(".node")
-          .data(verts)
-          .enter()
-          .append("circle")
-          .attr("class", "node")
-          .attr("cx", (d) => polarToXY(d.a, R)[0])
-          .attr("cy", (d) => polarToXY(d.a, R)[1])
-          .attr("r", rNode)
-          .attr("fill", "#ffd8ff")
-          .attr("opacity", 0.85)
-          .attr("filter", "url(#glow)");
-      }
-
-      return { draw };
-    }
   }
 
   function initHistoryPage() {
@@ -392,9 +430,13 @@
         const card = document.createElement("article");
         card.className = "history-item";
 
+        const content = document.createElement("div");
+        content.className = "history-content";
+        card.appendChild(content);
+
         const heading = document.createElement("h3");
         heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
-        card.appendChild(heading);
+        content.appendChild(heading);
 
         const numbersWrap = document.createElement("div");
         numbersWrap.className = "numbers";
@@ -407,7 +449,7 @@
           ball.textContent = pick.Number;
           numbersWrap.appendChild(ball);
         });
-        card.appendChild(numbersWrap);
+        content.appendChild(numbersWrap);
 
         if (entry.meta) {
           const metaParts = [];
@@ -421,11 +463,35 @@
             const meta = document.createElement("div");
             meta.className = "meta";
             meta.textContent = `Picked ${metaParts.join(" ")}`;
-            card.appendChild(meta);
+            content.appendChild(meta);
           }
         }
 
+        const vizWrapper = document.createElement("div");
+        vizWrapper.className = "history-board-wrapper";
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "history-board");
+        svg.setAttribute("role", "img");
+        svg.setAttribute("aria-label", "Mystic pick visualization");
+        vizWrapper.appendChild(svg);
+        card.appendChild(vizWrapper);
+
         historyList.appendChild(card);
+
+        const mainNumbers = (entry.picks || [])
+          .filter((pick) => !pick.IsSpecial)
+          .map((pick) => pick.Number);
+        try {
+          const board = createMysticBoard(svg);
+          const render = () => board.draw(MAIN_MAX, mainNumbers);
+          if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(render);
+          } else {
+            render();
+          }
+        } catch (err) {
+          console.error("Failed to render history board", err);
+        }
       });
     }
 
