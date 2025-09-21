@@ -147,6 +147,9 @@
       const rNode = Math.max(2, w * 0.006);
 
       const special = sanitizeSpecial(specialPick, limit ?? totalPositions);
+      const glowAllowance = Math.max(4, w * 0.01);
+      const circlePadding = Math.max(1.5, w * 0.003);
+      const specialOffset = glowAllowance + circlePadding;
 
       g.append("circle")
         .attr("r", R)
@@ -213,17 +216,25 @@
       if (special) {
         const specialAngle =
           ((special.value - 1) / special.limit) * Math.PI * 2 - Math.PI / 2;
-        const [sx, sy] = polarToXY(specialAngle, R);
-        g.append("circle")
-          .attr("class", "special-node")
-          .attr("cx", sx)
-          .attr("cy", sy)
-          .attr("r", Math.max(rNode * 1.8, w * 0.012))
-          .attr("fill", "#ff4d6d")
-          .attr("stroke", "#ffffff")
-          .attr("stroke-width", Math.max(1, w * 0.0025))
-          .attr("opacity", 0.95)
-          .attr("filter", "url(#glow)");
+        let specialRadius = Math.max(rNode * 1.8, w * 0.012);
+        const maxSpecialRadius = Math.max(0, R - specialOffset);
+        if (specialRadius > maxSpecialRadius) {
+          specialRadius = maxSpecialRadius;
+        }
+        if (specialRadius > 0) {
+          const specialOrbit = Math.max(R - (specialRadius + specialOffset), 0);
+          const [sx, sy] = polarToXY(specialAngle, specialOrbit);
+          g.append("circle")
+            .attr("class", "special-node")
+            .attr("cx", sx)
+            .attr("cy", sy)
+            .attr("r", specialRadius)
+            .attr("fill", "#ff4d6d")
+            .attr("stroke", "#ffffff")
+            .attr("stroke-width", Math.max(1, w * 0.0025))
+            .attr("opacity", 0.95)
+            .attr("filter", "url(#glow)");
+        }
       }
     }
 
