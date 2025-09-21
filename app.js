@@ -144,11 +144,11 @@
       );
 
       const R = w * 0.5;
-      const rNode = Math.max(2, w * 0.006);
+      const rNode = Math.max(2, w * 0.005);
 
       const special = sanitizeSpecial(specialPick, limit ?? totalPositions);
       const glowAllowance = Math.max(4, w * 0.01);
-      const circlePadding = Math.max(1.5, w * 0.003);
+      const circlePadding = Math.max(1.2, w * 0.003);
       const specialOffset = glowAllowance + circlePadding;
 
       g.append("circle")
