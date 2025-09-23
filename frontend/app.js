@@ -524,22 +524,6 @@
         });
         content.appendChild(numbersWrap);
 
-        if (entry.meta) {
-          const metaParts = [];
-          if (entry.meta.sourceIp) {
-            metaParts.push(`from ${entry.meta.sourceIp}`);
-          }
-          if (entry.meta.userAgent) {
-            metaParts.push(`via ${entry.meta.userAgent}`);
-          }
-          if (metaParts.length) {
-            const meta = document.createElement("div");
-            meta.className = "meta";
-            meta.textContent = `Picked ${metaParts.join(" ")}`;
-            content.appendChild(meta);
-          }
-        }
-
         const vizWrapper = document.createElement("div");
         vizWrapper.className = "history-board-wrapper";
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
