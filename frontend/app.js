@@ -595,7 +595,17 @@
         return "";
       }
 
-      return segments.map((segment) => encodeURIComponent(segment)).join("/");
+      let normalizedSegments = segments;
+      if (segments.length > 1 && segments[0].toLowerCase() === "entries") {
+        normalizedSegments = segments.slice(1);
+        if (!normalizedSegments.length) {
+          normalizedSegments = segments;
+        }
+      }
+
+      return normalizedSegments
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
     }
 
     async function updatePlayedStateRequest(entryId, playedValue) {
