@@ -285,13 +285,6 @@ p {
   gap: 10px;
 }
 
-.meta {
-  margin-top: 0;
-  font-size: 13px;
-  color: #bda3e6;
-  text-align: left;
-}
-
 @media (min-width: 560px) {
   .history-item {
     flex-direction: row;
