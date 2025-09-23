@@ -1,6 +1,6 @@
 # lotto.robstave.com
 
-Tiny static site that generates California SuperLotto Plus numbers with a bit of flair (sparkles, bouncing balls, and a very serious cat).
+Tiny static site that generates California SuperLotto Plus numbers with a bit of flair (sparkles, bouncing balls, and a very serious cat). The front-end assets live in the `frontend/` directory.
 
 Preview (S3 object URL):
 - https://s3.us-west-1.amazonaws.com/lotto.robstave.com/index.html
@@ -8,7 +8,7 @@ Preview (S3 object URL):
 ---
 
 ## Quick start (local)
-- No build required. Open `index.html` directly in your browser.
+- No build required. Open `frontend/index.html` directly in your browser.
 - Optional: run a simple static server while editing to avoid caching quirks.
 
 ---
@@ -21,12 +21,12 @@ Prereqs:
 PowerShell (Windows):
 ```powershell
 # From repository root
-aws s3 sync . s3://lotto.robstave.com --delete --exclude ".git/*" --exclude ".github/*"
+aws s3 sync frontend/ s3://lotto.robstave.com --delete
 ```
 
 Bash (macOS/Linux):
 ```bash
-aws s3 sync . s3://lotto.robstave.com --delete --exclude ".git/*" --exclude ".github/*"
+aws s3 sync frontend/ s3://lotto.robstave.com --delete
 ```
 
 Notes:
@@ -48,6 +48,8 @@ name: Deploy to S3
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'frontend/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -60,7 +62,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Sync to S3
         run: |
-          aws s3 sync . s3://${{ secrets.S3_BUCKET }} --delete --exclude ".git/*" --exclude ".github/*"
+          aws s3 sync frontend/ s3://${{ secrets.S3_BUCKET }} --delete
 ```
 Tip: Consider GitHub OIDC with a role in AWS for short-lived credentials instead of long-lived access keys.
 
