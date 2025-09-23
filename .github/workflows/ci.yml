@@ -12,11 +12,11 @@ jobs:
       - name: Link Checker
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress ./index.html
+          args: --no-progress ./frontend/index.html ./frontend/history.html
       - name: HTML5 Validator
         uses: Cyb3r-Jak3/html5validator-action@master
         with:
-          root: .
+          root: ./frontend
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
