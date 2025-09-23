@@ -72,12 +72,23 @@ p {
   background: #916ce0;
 }
 
+.button:disabled,
+.button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .button.secondary {
   background: #5440a3;
 }
 
 .button.secondary:hover {
   background: #6654b8;
+}
+
+.button.small {
+  padding: 8px 16px;
+  font-size: 14px;
 }
 
 .button-row {
@@ -250,6 +261,46 @@ p {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.history-meta .button {
+  margin-top: 0;
+}
+
+.history-played-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(126, 86, 218, 0.35);
+  color: #f5e3ff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.history-played-state.is-true {
+  background: rgba(64, 168, 122, 0.35);
+  color: #c7ffdc;
+}
+
+.history-played-state.is-false {
+  background: rgba(217, 109, 140, 0.35);
+  color: #ffe3f1;
+}
+
+.history-played-toggle[aria-busy="true"] {
+  cursor: progress;
 }
 
 .history-content {
