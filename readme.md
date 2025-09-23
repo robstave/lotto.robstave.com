@@ -11,21 +11,6 @@ Preview (S3 object URL):
 - No build required. Open `frontend/index.html` directly in your browser.
 - Optional: run a simple static server while editing to avoid caching quirks.
 
-### API key for protected API routes
-Some API Gateway routes (e.g., marking a pick as played) may require an API key. The front-end
-looks for the key in a few non-secret storage spots and, when available, sends it as an `x-api-key`
-header on requests:
-
-- A `<meta name="lotto-api-key" content="VALUE" />` tag in the page head
-- A `data-api-key="VALUE"` attribute on the `<body>` element
-- `localStorage.setItem("lottoApiKey", "VALUE")`
-- `sessionStorage.setItem("lottoApiKey", "VALUE")`
-
-Pick whichever option best fits your hosting setup (e.g., run `localStorage.setItem(...)` in the
-browser console after loading the page).
-
----
-
 ## Quick deploy to S3
 Prereqs:
 - AWS CLI installed and configured with an IAM user that can write to `s3://lotto.robstave.com`

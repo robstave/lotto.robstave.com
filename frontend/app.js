@@ -6,62 +6,6 @@
   const MEGA_MAX = 27;
   const API_BASE_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
 
-  // Optionally attach an API key header if one has been provided via markup or storage.
-  function getOptionalApiKeyHeaders() {
-    let key = null;
-
-    try {
-      if (typeof document !== "undefined") {
-        const metaKey = document
-          .querySelector('meta[name="lotto-api-key"]')
-          ?.getAttribute("content");
-        if (metaKey && metaKey.trim()) {
-          key = metaKey.trim();
-        } else if (document.body?.dataset?.apiKey) {
-          const bodyKey = document.body.dataset.apiKey.trim();
-          if (bodyKey) {
-            key = bodyKey;
-          }
-        }
-      }
-    } catch (err) {
-      // Access to DOM metadata may be restricted; ignore and continue.
-    }
-
-    if (!key) {
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          const storedKey = window.localStorage.getItem("lottoApiKey");
-          if (storedKey && storedKey.trim()) {
-            key = storedKey.trim();
-          }
-        }
-      } catch (err) {
-        // Access to localStorage may be blocked (e.g., privacy mode).
-      }
-    }
-
-    if (!key) {
-      try {
-        if (typeof window !== "undefined" && window.sessionStorage) {
-          const sessionKey = window.sessionStorage.getItem("lottoApiKey");
-          if (sessionKey && sessionKey.trim()) {
-            key = sessionKey.trim();
-          }
-        }
-      } catch (err) {
-        // Access to sessionStorage may be blocked.
-      }
-    }
-
-    if (typeof key === "string" && key.trim()) {
-      return { "x-api-key": key.trim() };
-    }
-
-    return {};
-  }
-
-
   document.addEventListener("DOMContentLoaded", () => {
     const body = document.body;
     if (!body) {
@@ -439,7 +383,6 @@
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            ...getOptionalApiKeyHeaders(),
           },
           body: JSON.stringify(payload),
         });
@@ -465,7 +408,6 @@
           method: "POST",
           headers: {
             Accept: "application/json",
-            ...getOptionalApiKeyHeaders(),
           },
           body: JSON.stringify(payload),
         });
@@ -626,15 +568,34 @@
       if (entryId === null || entryId === undefined) {
         return "";
       }
-      const text = String(entryId).trim();
-      if (!text) {
+
+      const rawText = String(entryId).trim();
+      if (!rawText) {
         return "";
       }
+
+      let decoded = rawText;
       try {
-        return encodeURIComponent(decodeURIComponent(text));
+        decoded = decodeURIComponent(rawText);
       } catch (err) {
-        return encodeURIComponent(text);
+        // Value may not actually be encoded; fall back to the raw text.
       }
+
+      const trimmed = decoded.replace(/^\/+|\/+$/g, "");
+      if (!trimmed) {
+        return "";
+      }
+
+      const segments = trimmed
+        .split("/")
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+
+      if (!segments.length) {
+        return "";
+      }
+
+      return segments.map((segment) => encodeURIComponent(segment)).join("/");
     }
 
     async function updatePlayedStateRequest(entryId, playedValue) {
@@ -647,7 +608,6 @@
         method: "PUT",
         headers: {
           Accept: "application/json",
-          ...getOptionalApiKeyHeaders(),
         },
       });
       if (!response.ok) {
@@ -663,7 +623,6 @@
         const response = await fetchWithTimeout(API_URL, {
           headers: {
             Accept: "application/json",
-            ...getOptionalApiKeyHeaders(),
           },
         });
         if (!response.ok) {
