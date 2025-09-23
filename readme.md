@@ -1,11 +1,55 @@
 # lotto.robstave.com
 
+
 Tiny static site that generates California SuperLotto Plus numbers with a bit of flair (sparkles, bouncing balls, and a very serious cat). The front-end assets live in the `frontend/` directory.
 
 Preview (S3 object URL):
 - https://s3.us-west-1.amazonaws.com/lotto.robstave.com/index.html
+or
+- lotto.robstave.com.s3-website-us-west-1.amazonaws.com
+
+
 
 ---
+
+
+## Project overview
+
+Consists of the following components:
+
+- S3 bucket (`lotto.robstave.com`) to host the static site
+- S3 bucket (`lotto.robstave.com-history`) to store generated numbers 
+- Lambda function (`lottostore`) to fetch and store numbers in the history bucket
+- API Gateway endpoint to invoke the Lambda function
+- Cloudfront distribution to serve the API (optional; can serve directly from S3)
+
+
+Create this as a mermaid diagram
+
+cloudfront is connected to the s3 bucket lotto.robstave.com and the api gateway.
+api gateway is connected to the lambda function lottostore.
+lambda function lottostore is connected to the s3 bucket lotto.robstave.com-history
+
+```mermaid
+graph TD
+    A[CloudFront Distribution] --> B[S3 Bucket: lotto.robstave.com]
+    A --> C[API Gateway]
+    C --> D[Lambda Function: lottostore]
+    D --> E[S3 Bucket: lotto.robstave.com-history]
+```
+
+There is a usage plan on the API Gateway to limit requests to 100 per day. The API key is passed in the `x-api-key` header when invoking the API.
+
+
+
+
+
+
+
+
+
+
+
 
 ## Quick start (local)
 - No build required. Open `frontend/index.html` directly in your browser.
@@ -14,6 +58,7 @@ Preview (S3 object URL):
 ---
 
 ## Quick deploy to S3
+
 Prereqs:
 - AWS CLI installed and configured with an IAM user that can write to `s3://lotto.robstave.com`
 - Bucket created; public-read/website or CloudFront configured
