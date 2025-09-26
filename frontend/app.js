@@ -406,9 +406,7 @@
       try {
         const resp2 = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
-          headers: {
-            Accept: "application/json",
-          },
+      
           body: JSON.stringify(payload),
         });
         if (!resp2.ok) {
