@@ -4,6 +4,7 @@
   const MAIN_COUNT = 5;
   const MAIN_MAX = 47;
   const MEGA_MAX = 27;
+  const API_BASE_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
 
   document.addEventListener("DOMContentLoaded", () => {
     const body = document.body;
@@ -242,7 +243,7 @@
   }
 
   function initPickerPage() {
-    const STORE_API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
+    const STORE_API_URL = API_BASE_URL;
 
     const instructionsEl = document.getElementById("instructions");
     const pickBtn = document.getElementById("pick-btn");
@@ -405,9 +406,7 @@
       try {
         const resp2 = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
-          headers: {
-            Accept: "application/json",
-          },
+      
           body: JSON.stringify(payload),
         });
         if (!resp2.ok) {
@@ -444,7 +443,7 @@
   }
 
   function initHistoryPage() {
-    const API_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries?limit=20";
+    const API_URL = `${API_BASE_URL}?limit=20`;
     const statusEl = document.getElementById("status");
     const historyList = document.getElementById("history-list");
     const backBtn = document.getElementById("back-btn");
@@ -454,17 +453,196 @@
       return;
     }
 
+    function fetchWithTimeout(resource, options = {}, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timerId = setTimeout(() => controller.abort(), timeoutMs);
+      const mergedOptions = {
+        mode: "cors",
+        cache: "no-store",
+        credentials: "omit",
+        ...options,
+        signal: controller.signal,
+      };
+      return fetch(resource, mergedOptions).finally(() => clearTimeout(timerId));
+    }
+
+    function coerceBoolean(value) {
+      if (value === null || value === undefined) {
+        return false;
+      }
+      if (typeof value === "boolean") {
+        return value;
+      }
+      if (typeof value === "number") {
+        return value !== 0;
+      }
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (!normalized) {
+          return false;
+        }
+        if (["true", "1", "yes", "y"].includes(normalized)) {
+          return true;
+        }
+        if (["false", "0", "no", "n"].includes(normalized)) {
+          return false;
+        }
+        return Boolean(normalized);
+      }
+      return Boolean(value);
+    }
+
+    function getPlayedState(entry) {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+      const candidates = [
+        "played",
+        "Played",
+        "isPlayed",
+        "IsPlayed",
+        "wasPlayed",
+        "WasPlayed",
+      ];
+      for (const prop of candidates) {
+        if (prop in entry) {
+          return coerceBoolean(entry[prop]);
+        }
+      }
+      const nested = [entry.meta, entry.metadata, entry.state, entry.details];
+      for (const candidate of nested) {
+        if (candidate && typeof candidate === "object") {
+          if ("played" in candidate) {
+            return coerceBoolean(candidate.played);
+          }
+          if ("Played" in candidate) {
+            return coerceBoolean(candidate.Played);
+          }
+        }
+      }
+      return false;
+    }
+
+    function getEntryId(entry) {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      const candidates = [
+        entry.id,
+        entry.ID,
+        entry.entryId,
+        entry.EntryId,
+        entry.entryID,
+        entry.key,
+        entry.Key,
+        entry.pk,
+        entry.PK,
+        entry.sk,
+        entry.SK,
+        entry.s3Key,
+        entry.S3Key,
+        entry.filename,
+        entry.fileName,
+        entry.name,
+        entry.uri,
+        entry.URL,
+      ];
+      for (const candidate of candidates) {
+        if (candidate === null || candidate === undefined) {
+          continue;
+        }
+        const text = String(candidate).trim();
+        if (text) {
+          return text;
+        }
+      }
+      if (typeof entry.location === "string" && entry.location.trim()) {
+        return entry.location.trim();
+      }
+      return null;
+    }
+
+    function normalizeEntryId(entryId) {
+      if (entryId === null || entryId === undefined) {
+        return "";
+      }
+
+      const rawText = String(entryId).trim();
+      if (!rawText) {
+        return "";
+      }
+
+      let decoded = rawText;
+      try {
+        decoded = decodeURIComponent(rawText);
+      } catch (err) {
+        // Value may not actually be encoded; fall back to the raw text.
+      }
+
+      const trimmed = decoded.replace(/^\/+|\/+$/g, "");
+      if (!trimmed) {
+        return "";
+      }
+
+      const segments = trimmed
+        .split("/")
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+
+      if (!segments.length) {
+        return "";
+      }
+
+      let normalizedSegments = segments;
+      if (segments.length > 1 && segments[0].toLowerCase() === "entries") {
+        normalizedSegments = segments.slice(1);
+        if (!normalizedSegments.length) {
+          normalizedSegments = segments;
+        }
+      }
+
+      return normalizedSegments
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+    }
+
+    async function updatePlayedStateRequest(entryId, playedValue) {
+      const normalizedId = normalizeEntryId(entryId);
+      if (!normalizedId) {
+        throw new Error("Missing or invalid entry identifier");
+      }
+      const targetUrl = `${API_BASE_URL}/${normalizedId}/played/${playedValue ? "true" : "false"}`;
+      const response = await fetchWithTimeout(targetUrl, {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Request failed with status ${response.status}${body ? `: ${body}` : ""}`
+        );
+      }
+    }
+
     async function loadHistory() {
       try {
-        const response = await fetch(API_URL, { cache: "no-store" });
+        const response = await fetchWithTimeout(API_URL, {
+          headers: {
+            Accept: "application/json",
+          },
+        });
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`);
         }
         const data = await response.json();
         renderHistory(Array.isArray(data.items) ? data.items : []);
+        return true;
       } catch (err) {
         statusEl.textContent = "Unable to load picks right now. Please try again later.";
         console.error("Failed to load history", err);
+        return false;
       }
     }
 
@@ -523,6 +701,73 @@
           numbersWrap.appendChild(ball);
         });
         content.appendChild(numbersWrap);
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "history-meta";
+
+        const playedIndicator = document.createElement("span");
+        playedIndicator.className = "history-played-state";
+        metaRow.appendChild(playedIndicator);
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "button small history-played-toggle";
+        metaRow.appendChild(toggleBtn);
+
+        const entryId = getEntryId(entry);
+        const initialPlayed = getPlayedState(entry);
+
+        const applyPlayedUi = (value) => {
+          const isPlayed = Boolean(value);
+          playedIndicator.textContent = `Played: ${isPlayed ? "true" : "false"}`;
+          playedIndicator.classList.toggle("is-true", isPlayed);
+          playedIndicator.classList.toggle("is-false", !isPlayed);
+          toggleBtn.textContent = isPlayed ? "Mark as unplayed" : "Mark as played";
+          toggleBtn.setAttribute("aria-pressed", isPlayed ? "true" : "false");
+        };
+
+        applyPlayedUi(initialPlayed);
+
+        if (!entryId) {
+          toggleBtn.disabled = true;
+          toggleBtn.textContent = "ID unavailable";
+          toggleBtn.title = "Unable to update without an entry identifier.";
+          toggleBtn.setAttribute("aria-disabled", "true");
+        } else {
+          toggleBtn.addEventListener("click", async () => {
+            const current = getPlayedState(entry);
+            const nextValue = !current;
+            statusEl.textContent = "Updating entry...";
+            toggleBtn.disabled = true;
+            toggleBtn.textContent = "Updating...";
+            toggleBtn.setAttribute("aria-busy", "true");
+            try {
+              await updatePlayedStateRequest(entryId, nextValue);
+            } catch (err) {
+              console.error("Failed to update played state", err);
+              statusEl.textContent =
+                "Unable to update the played state right now. Please try again later.";
+              toggleBtn.disabled = false;
+              toggleBtn.removeAttribute("aria-busy");
+              toggleBtn.removeAttribute("aria-disabled");
+              applyPlayedUi(current);
+              return;
+            }
+
+            const reloadSucceeded = await loadHistory();
+            if (reloadSucceeded) {
+              return;
+            }
+            statusEl.textContent =
+              "Played state updated, but the history view could not be refreshed. Please reload.";
+            toggleBtn.disabled = false;
+            toggleBtn.removeAttribute("aria-busy");
+            toggleBtn.removeAttribute("aria-disabled");
+            applyPlayedUi(nextValue);
+          });
+        }
+
+        content.appendChild(metaRow);
 
         const vizWrapper = document.createElement("div");
         vizWrapper.className = "history-board-wrapper";

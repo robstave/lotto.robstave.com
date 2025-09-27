@@ -55,8 +55,6 @@ There is a usage plan on the API Gateway to limit requests to 100 per day. The A
 - No build required. Open `frontend/index.html` directly in your browser.
 - Optional: run a simple static server while editing to avoid caching quirks.
 
----
-
 ## Quick deploy to S3
 
 Prereqs:
