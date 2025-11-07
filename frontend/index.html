@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>California SuperLotto VibeCode Demo</title>
+    <title>California Lottery Picker — SuperLotto Plus</title>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js" defer></script>
@@ -19,7 +19,30 @@
             aria-label="Mystic chord diagram"
           ></svg>
         </div>
-        <h2>SuperLotto Plus Picker</h2>
+        <div
+          id="game-toggle"
+          class="game-toggle"
+          role="group"
+          aria-label="Select lottery game"
+        >
+          <button
+            type="button"
+            class="game-option"
+            data-game="superlotto"
+            aria-pressed="true"
+          >
+            SuperLotto Plus
+          </button>
+          <button
+            type="button"
+            class="game-option"
+            data-game="fantasy5"
+            aria-pressed="false"
+          >
+            Fantasy 5
+          </button>
+        </div>
+        <h2 id="game-title">SuperLotto Plus Picker</h2>
         <p id="instructions"></p>
         <div class="button-row">
           <button id="pick-btn" class="button">Generate Numbers</button>
