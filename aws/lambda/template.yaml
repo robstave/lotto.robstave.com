@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample Lambda(s) for lotto.robstave.com (manual deploy today; CI/CD optional later)
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 128
+
+Resources:
+  StorePickFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: lotto-store-pick
+      CodeUri: aws/lambda/functions/storePick/
+      Handler: index.handler
+      Architectures:
+        - x86_64
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /entries
+            Method: post
+
+Outputs:
+  ApiUrl:
+    Description: API endpoint
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/entries'
