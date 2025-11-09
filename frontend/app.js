@@ -581,14 +581,26 @@
   }
 
   function initHistoryPage() {
-    const API_URL = `${API_BASE_URL}?limit=20`;
+    const DEFAULT_HISTORY_LIMIT = 20;
+    const DEFAULT_GAME_FILTER = "all";
     const statusEl = document.getElementById("status");
     const historyList = document.getElementById("history-list");
     const backBtn = document.getElementById("back-btn");
+    const filterSelect = document.getElementById("game-filter");
 
     if (!statusEl || !historyList || !backBtn) {
       console.error("History page markup is missing required elements.");
       return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const rawGameParam = searchParams.get("game");
+    const normalizedQueryParam =
+      typeof rawGameParam === "string" ? rawGameParam.trim().toLowerCase() : null;
+    let currentGameFilter = normalizeGameFilter(rawGameParam);
+
+    if (filterSelect) {
+      filterSelect.value = currentGameFilter;
     }
 
     function fetchWithTimeout(resource, options = {}, timeoutMs = 12000) {
@@ -764,9 +776,86 @@
       }
     }
 
+    function getFilterLabel(filter) {
+      if (filter === DEFAULT_GAME_FILTER) {
+        return "all games";
+      }
+      const config = GAME_CONFIGS[filter];
+      return config ? config.name : "selected game";
+    }
+
+    function getFilterStatusLabel() {
+      return currentGameFilter === DEFAULT_GAME_FILTER
+        ? "recent picks"
+        : `${getFilterLabel(currentGameFilter)} picks`;
+    }
+
+    function buildApiUrl() {
+      const params = new URLSearchParams();
+      params.set("limit", String(DEFAULT_HISTORY_LIMIT));
+      if (currentGameFilter !== DEFAULT_GAME_FILTER) {
+        params.set("game", currentGameFilter);
+      }
+      return `${API_BASE_URL}?${params.toString()}`;
+    }
+
+    function updateFilterHintInUrl(filter) {
+      if (typeof window === "undefined" || !window.history || !window.location) {
+        return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      if (filter === DEFAULT_GAME_FILTER) {
+        params.delete("game");
+      } else {
+        params.set("game", filter);
+      }
+      const search = params.toString();
+      const newUrl = search ? `${window.location.pathname}?${search}` : window.location.pathname;
+      window.history.replaceState(null, "", newUrl);
+    }
+
+    function normalizeGameFilter(value) {
+      if (typeof value !== "string") {
+        return DEFAULT_GAME_FILTER;
+      }
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) {
+        return DEFAULT_GAME_FILTER;
+      }
+      if (normalized === DEFAULT_GAME_FILTER) {
+        return DEFAULT_GAME_FILTER;
+      }
+      if (Object.prototype.hasOwnProperty.call(GAME_CONFIGS, normalized)) {
+        return normalized;
+      }
+      return DEFAULT_GAME_FILTER;
+    }
+
+    function setGameFilter(nextFilter) {
+      const normalized = normalizeGameFilter(nextFilter);
+      if (normalized === currentGameFilter) {
+        if (filterSelect && filterSelect.value !== normalized) {
+          filterSelect.value = normalized;
+        }
+        return;
+      }
+      currentGameFilter = normalized;
+      if (filterSelect && filterSelect.value !== normalized) {
+        filterSelect.value = normalized;
+      }
+      updateFilterHintInUrl(normalized);
+      loadHistory();
+    }
+
+    if (normalizedQueryParam !== null && normalizedQueryParam !== currentGameFilter) {
+      updateFilterHintInUrl(currentGameFilter);
+    }
+
     async function loadHistory() {
+      historyList.innerHTML = "";
+      statusEl.textContent = `Loading ${getFilterStatusLabel()}...`;
       try {
-        const response = await fetchWithTimeout(API_URL, {
+        const response = await fetchWithTimeout(buildApiUrl(), {
           headers: {
             Accept: "application/json",
           },
@@ -778,7 +867,7 @@
         renderHistory(Array.isArray(data.items) ? data.items : []);
         return true;
       } catch (err) {
-        statusEl.textContent = "Unable to load picks right now. Please try again later.";
+        statusEl.textContent = `Unable to load ${getFilterStatusLabel()} right now. Please try again later.`;
         console.error("Failed to load history", err);
         return false;
       }
@@ -802,7 +891,10 @@
     function renderHistory(items) {
       historyList.innerHTML = "";
       if (!items.length) {
-        statusEl.textContent = "No previous picks have been recorded yet.";
+        statusEl.textContent =
+          currentGameFilter === DEFAULT_GAME_FILTER
+            ? "No previous picks have been recorded yet."
+            : `No ${getFilterLabel(currentGameFilter)} picks have been recorded yet.`;
         return;
       }
       statusEl.textContent = "";
@@ -952,6 +1044,12 @@
     backBtn.addEventListener("click", () => {
       window.location.href = "index.html";
     });
+
+    if (filterSelect) {
+      filterSelect.addEventListener("change", (event) => {
+        setGameFilter(event.target.value);
+      });
+    }
 
     loadHistory();
   }

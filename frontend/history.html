@@ -15,10 +15,18 @@
         track of which picks you've used. Each card shows whether it was for SuperLotto Plus or
         Fantasy 5.
       </p>
+      <div class="history-controls">
+        <label for="game-filter" class="history-filter-label">Show picks for</label>
+        <select id="game-filter" class="history-filter-select" aria-label="Filter by game">
+          <option value="all">All games</option>
+          <option value="superlotto">SuperLotto Plus</option>
+          <option value="fantasy5">Fantasy 5</option>
+        </select>
+      </div>
       <p id="status" class="status" role="status">Loading recent picks...</p>
       <div id="history-list" class="history-list" aria-live="polite"></div>
       <button id="back-btn" class="button">Back to Picker</button>
     </div>
-    
+
   </body>
 </html>
