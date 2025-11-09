@@ -154,15 +154,21 @@ async function handlePost(event) {
   return cors(201, { ok: true, key: id, pickedAt });
 }
 
-// GET /api/entries?limit=10  (newest first limited)
+// GET /api/entries?limit=10&game=fantasy5  (newest-first limited; optional game filter)
+// game may be "fantasy5" or "superlotto" (case-insensitive). If invalid/absent, no filtering.
 async function handleGetEntries(event) {
   if (!BUCKET) return cors(500, { error: "Missing BUCKET_NAME env" });
 
-  const limit = clamp(parseInt(event.queryStringParameters?.limit ?? "10", 10), 1, 100);
-  const all = await loadAllEntries();
+  const qs = event.queryStringParameters || {};
+  const limit = clamp(parseInt(qs.limit ?? "10", 10), 1, 100);
+  const rawGame = (qs.game || qs.Game || "").trim().toLowerCase();
+  const allowedGames = new Set(["fantasy5", "superlotto"]);
+  const gameFilter = allowedGames.has(rawGame) ? rawGame : null;
 
-  const items = all.slice(0, limit).map(e => ({ ...e, key: e.id }));
-  return cors(200, { items, count: items.length });
+  const all = await loadAllEntries(); // stored newest-first
+  const filtered = gameFilter ? all.filter(e => (e.game || "").toLowerCase() === gameFilter) : all;
+  const items = filtered.slice(0, limit).map(e => ({ ...e, key: e.id }));
+  return cors(200, { items, count: items.length, gameFilter: gameFilter || null });
 }
 
 // GET /api/endpoints  (return ALL items newest-first)
