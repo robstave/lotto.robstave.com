@@ -35,6 +35,59 @@ body {
   overflow: visible;
 }
 
+.history-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(63, 27, 97, 0.6);
+  padding: 10px 14px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.history-filter-label {
+  font-size: 14px;
+  color: #d1b6f2;
+}
+
+.history-filter-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: rgba(126, 86, 218, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(199, 169, 255, 0.6);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.history-filter-select:focus,
+.history-filter-select:hover {
+  outline: none;
+  background: rgba(126, 86, 218, 0.35);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 420px) {
+  .history-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .history-filter-label {
+    font-size: 13px;
+  }
+
+  .history-filter-select {
+    width: 100%;
+  }
+}
+
 h2 {
   margin: 0;
   color: #f0e8ff;
