@@ -303,4 +303,3 @@ function validateCaSuperlotto(body) {
   if (specialCount !== 1) return { ok: false, error: "Exactly one pick must have IsSpecial=true" };
   return { ok: true };
 }
-sav
