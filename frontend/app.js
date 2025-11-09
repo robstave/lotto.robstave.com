@@ -1,10 +1,38 @@
 (function () {
   "use strict";
 
-  const MAIN_COUNT = 5;
-  const MAIN_MAX = 47;
-  const MEGA_MAX = 27;
+  const GAME_CONFIGS = {
+    superlotto: {
+      id: "superlotto",
+      name: "SuperLotto Plus",
+      mainCount: 5,
+      mainMax: 47,
+      special: {
+        label: "Mega",
+        max: 27,
+      },
+    },
+    fantasy5: {
+      id: "fantasy5",
+      name: "Fantasy 5",
+      mainCount: 5,
+      mainMax: 39,
+      special: null,
+    },
+  };
+  const DEFAULT_GAME_ID = "superlotto";
   const API_BASE_URL = "https://d2zi62cpjup4kp.cloudfront.net/api/entries";
+
+  function getGameConfig(gameId) {
+    if (!gameId || typeof gameId !== "string") {
+      return GAME_CONFIGS[DEFAULT_GAME_ID];
+    }
+    const normalized = gameId.trim().toLowerCase();
+    if (normalized in GAME_CONFIGS) {
+      return GAME_CONFIGS[normalized];
+    }
+    return GAME_CONFIGS[DEFAULT_GAME_ID];
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     const body = document.body;
@@ -252,16 +280,28 @@
     const numbersDiv = document.getElementById("numbers");
     const catImg = document.querySelector(".cat-img");
     const board = document.getElementById("mystic-board");
+    const gameToggle = document.getElementById("game-toggle");
+    const gameButtons = gameToggle
+      ? Array.from(gameToggle.querySelectorAll("[data-game]"))
+      : [];
+    const titleEl = document.getElementById("game-title");
 
-    if (!instructionsEl || !pickBtn || !historyBtn || !storeBtn || !numbersDiv || !catImg || !board) {
+    if (
+      !instructionsEl ||
+      !pickBtn ||
+      !historyBtn ||
+      !storeBtn ||
+      !numbersDiv ||
+      !catImg ||
+      !board
+    ) {
       console.error("Picker page markup is missing required elements.");
       return;
     }
 
+    let currentGame = getGameConfig(DEFAULT_GAME_ID);
     let lastMain = [];
-    let lastMega = null;
-
-    instructionsEl.innerHTML = `Pick <strong>${MAIN_COUNT} numbers</strong> between 1 and ${MAIN_MAX} and <strong>1 Mega number</strong> between 1 and ${MEGA_MAX}.`;
+    let lastSpecial = null;
 
     function fetchWithTimeout(resource, options = {}, timeoutMs = 12000) {
       const controller = new AbortController();
@@ -310,6 +350,59 @@
 
     const mystic = createMysticBoard(document.getElementById("mystic-board"));
 
+    function resetCurrentPick() {
+      lastMain = [];
+      lastSpecial = null;
+      numbersDiv.innerHTML = "";
+      board.style.display = "none";
+      storeBtn.disabled = true;
+      storeBtn.textContent = "Store Pick";
+      if (catImg) {
+        catImg.style.animation = "";
+      }
+    }
+
+    function updateGameUi() {
+      const special = currentGame.special;
+      if (titleEl) {
+        titleEl.textContent = `${currentGame.name} Picker`;
+      }
+      const titleNode = document.querySelector("title");
+      if (titleNode) {
+        titleNode.textContent = `California Lottery Picker — ${currentGame.name}`;
+      }
+      instructionsEl.innerHTML = special
+        ? `Pick <strong>${currentGame.mainCount} numbers</strong> between 1 and ${currentGame.mainMax} and <strong>1 ${special.label} number</strong> between 1 and ${special.max}.`
+        : `Pick <strong>${currentGame.mainCount} numbers</strong> between 1 and ${currentGame.mainMax}.`;
+      gameButtons.forEach((button) => {
+        const buttonConfig = getGameConfig(button.dataset.game);
+        const isActive = buttonConfig.id === currentGame.id;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+    }
+
+    function applyGameSelection(gameId) {
+      const nextGame = getGameConfig(gameId);
+      if (nextGame.id === currentGame.id) {
+        return;
+      }
+      currentGame = nextGame;
+      resetCurrentPick();
+      updateGameUi();
+    }
+
+    if (gameButtons.length) {
+      gameButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          applyGameSelection(button.dataset.game);
+        });
+      });
+    }
+
+    resetCurrentPick();
+    updateGameUi();
+
     function generateNumbers() {
       pickBtn.disabled = true;
       storeBtn.disabled = true;
@@ -322,11 +415,14 @@
       }, 150);
       const interval = setInterval(() => {
         const unique = new Set();
-        while (unique.size < MAIN_COUNT) {
-          unique.add(randIntInclusive(1, MAIN_MAX));
+        while (unique.size < currentGame.mainCount) {
+          unique.add(randIntInclusive(1, currentGame.mainMax));
         }
         const arr = Array.from(unique).sort((a, b) => a - b);
-        const mega = randIntInclusive(1, MEGA_MAX);
+        const specialConfig = currentGame.special;
+        const specialValue = specialConfig
+          ? randIntInclusive(1, specialConfig.max)
+          : null;
         numbersDiv.innerHTML = "";
         arr.forEach((n) => {
           const ball = document.createElement("div");
@@ -334,13 +430,19 @@
           ball.textContent = n;
           numbersDiv.appendChild(ball);
         });
-        const megaBall = document.createElement("div");
-        megaBall.className = "number-ball mega-ball";
-        megaBall.textContent = mega;
-        numbersDiv.appendChild(megaBall);
+        if (specialConfig && specialValue !== null) {
+          const megaBall = document.createElement("div");
+          megaBall.className = "number-ball mega-ball";
+          megaBall.textContent = specialValue;
+          numbersDiv.appendChild(megaBall);
+        }
         lastMain = arr;
-        lastMega = mega;
-        mystic.draw(MAIN_MAX, arr, { value: mega, max: MEGA_MAX });
+        lastSpecial = specialConfig ? specialValue : null;
+        const specialDraw =
+          specialConfig && specialValue !== null
+            ? { value: specialValue, max: specialConfig.max }
+            : null;
+        mystic.draw(currentGame.mainMax, arr, specialDraw);
         if (iteration === 0) {
           board.style.display = "block";
         }
@@ -355,8 +457,12 @@
       }, 100);
     }
 
-    async function storePick() {
-      if (!lastMain.length || lastMega === null) {
+  async function storePick() {
+      const specialConfig = currentGame.special;
+      if (
+        lastMain.length !== currentGame.mainCount ||
+        (specialConfig && lastSpecial === null)
+      ) {
         alert("Generate a pick before storing it.");
         return;
       }
@@ -368,15 +474,19 @@
         IsSpecial: false,
         Name: null,
       }));
-      picks.push({
-        Number: lastMega,
-        IsSpecial: true,
-        Name: null,
-      });
+      if (specialConfig && lastSpecial !== null) {
+        picks.push({
+          Number: lastSpecial,
+          IsSpecial: true,
+          Name: null,
+        });
+      }
       const payload = {
         picks,
         pickedAt: new Date().toISOString(),
+        game: currentGame.id,
       };
+      // Attempt 1: Standard JSON POST (may trigger preflight)
       try {
         const resp = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
@@ -403,15 +513,20 @@
       } catch (err) {
         console.warn("First attempt failed (likely CORS/preflight)", err);
       }
+
+      // Attempt 2: Simple request with text/plain to avoid preflight
       try {
         const resp2 = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
-      
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8",
+            Accept: "application/json",
+          },
           body: JSON.stringify(payload),
         });
         if (!resp2.ok) {
           const text2 = await resp2.text().catch(() => "");
-          console.error("StorePick fallback failed", {
+          console.error("StorePick fallback (text/plain) failed", {
             status: resp2.status,
             statusText: resp2.statusText,
             body: text2,
@@ -419,14 +534,32 @@
           throw new Error(`Fallback failed with status ${resp2.status}`);
         }
         window.location.href = "history.html";
-      } catch (finalErr) {
-        console.error("Unable to store pick after fallback", finalErr);
-        alert(
-          "Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later."
-        );
-        storeBtn.disabled = false;
-        storeBtn.textContent = originalText;
+        return;
+      } catch (err2) {
+        console.warn("Second attempt failed (text/plain simple request)", err2);
       }
+
+      // Attempt 3: no-cors opaque request (fire-and-forget). We can’t read the response, so we optimistically navigate.
+      try {
+        await fetch(STORE_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8",
+          },
+          body: JSON.stringify(payload),
+        });
+        window.location.href = "history.html";
+        return;
+      } catch (err3) {
+        console.error("Third attempt failed (no-cors)", err3);
+      }
+
+      alert(
+        "Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later."
+      );
+      storeBtn.disabled = false;
+      storeBtn.textContent = originalText;
     }
 
     pickBtn.addEventListener("click", generateNumbers);
@@ -437,7 +570,12 @@
 
     window.addEventListener("resize", () => {
       if (lastMain.length) {
-        mystic.draw(MAIN_MAX, lastMain, { value: lastMega, max: MEGA_MAX });
+        const specialConfig = currentGame.special;
+        const special =
+          specialConfig && lastSpecial !== null
+            ? { value: lastSpecial, max: specialConfig.max }
+            : null;
+        mystic.draw(currentGame.mainMax, lastMain, special);
       }
     });
   }
@@ -685,6 +823,9 @@
         content.className = "history-content";
         card.appendChild(content);
 
+        const gameConfig = getGameConfig(entry.game);
+        card.dataset.game = gameConfig.id;
+
         const heading = document.createElement("h3");
         heading.textContent = `${index + 1}. ${formatDate(entry.pickedAt)}`;
         content.appendChild(heading);
@@ -694,7 +835,7 @@
         (entry.picks || []).forEach((pick) => {
           const ball = document.createElement("span");
           ball.className = "number-ball";
-          if (pick.IsSpecial) {
+          if (pick.IsSpecial && gameConfig.special) {
             ball.classList.add("mega-ball");
           }
           ball.textContent = pick.Number;
@@ -704,6 +845,12 @@
 
         const metaRow = document.createElement("div");
         metaRow.className = "history-meta";
+
+        const gameBadge = document.createElement("span");
+        gameBadge.className = "history-game";
+        gameBadge.textContent = gameConfig.name;
+        gameBadge.dataset.game = gameConfig.id;
+        metaRow.appendChild(gameBadge);
 
         const playedIndicator = document.createElement("span");
         playedIndicator.className = "history-played-state";
@@ -784,10 +931,13 @@
           .filter((pick) => !pick.IsSpecial)
           .map((pick) => pick.Number);
         const specialPick = (entry.picks || []).find((pick) => pick.IsSpecial);
-        const special = specialPick ? { value: specialPick.Number, max: MEGA_MAX } : null;
+        const special =
+          specialPick && gameConfig.special
+            ? { value: specialPick.Number, max: gameConfig.special.max }
+            : null;
         try {
           const board = createMysticBoard(svg);
-          const render = () => board.draw(MAIN_MAX, mainNumbers, special);
+          const render = () => board.draw(gameConfig.mainMax, mainNumbers, special);
           if (typeof requestAnimationFrame === "function") {
             requestAnimationFrame(render);
           } else {

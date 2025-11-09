@@ -2,17 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Recent SuperLotto Picks</title>
+    <title>Recent Lottery Picks</title>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js" defer></script>
   </head>
   <body class="history-page">
     <div class="container">
-      <h2>Recent SuperLotto Picks</h2>
+      <h2>Recent Lottery Picks</h2>
       <p class="intro">
         The last 20 draws recorded by the amazing mystic cat. Toggle the played state to keep
-        track of which picks you've used.
+        track of which picks you've used. Each card shows whether it was for SuperLotto Plus or
+        Fantasy 5.
       </p>
       <p id="status" class="status" role="status">Loading recent picks...</p>
       <div id="history-list" class="history-list" aria-live="polite"></div>

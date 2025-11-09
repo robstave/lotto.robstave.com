@@ -38,7 +38,7 @@ graph TD
     D --> E[S3 Bucket: lotto.robstave.com-history]
 ```
 
-There is a usage plan on the API Gateway to limit requests to 100 per day. The API key is passed in the `x-api-key` header when invoking the API.
+There is a usage plan on the API Gateway to limit requests ( put/post ) to 100 per day. The API key is passed in the `x-api-key` header when invoking the API.
 
 
 

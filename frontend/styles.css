@@ -41,6 +41,59 @@ h2 {
   text-align: center;
 }
 
+.game-toggle {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(63, 27, 97, 0.6);
+  padding: 6px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.game-option {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #d1b6f2;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
+}
+
+.game-option:hover,
+.game-option:focus {
+  color: #ffffff;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.game-option.is-active {
+  background: #7e56da;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.game-option.is-active:hover,
+.game-option.is-active:focus {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 420px) {
+  .game-toggle {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .game-option {
+    width: 100%;
+  }
+}
+
 p {
   margin-top: 8px;
   margin-bottom: 16px;
@@ -297,6 +350,30 @@ p {
 .history-played-state.is-false {
   background: rgba(217, 109, 140, 0.35);
   color: #ffe3f1;
+}
+
+.history-game {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(84, 64, 163, 0.45);
+  color: #f0e8ff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.history-game[data-game="fantasy5"] {
+  background: rgba(64, 168, 122, 0.35);
+  color: #d6fff0;
+}
+
+.history-game[data-game="superlotto"] {
+  background: rgba(126, 86, 218, 0.35);
+  color: #f5e3ff;
 }
 
 .history-played-toggle[aria-busy="true"] {
