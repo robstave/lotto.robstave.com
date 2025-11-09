@@ -457,7 +457,7 @@
       }, 100);
     }
 
-    async function storePick() {
+  async function storePick() {
       const specialConfig = currentGame.special;
       if (
         lastMain.length !== currentGame.mainCount ||
@@ -486,6 +486,7 @@
         pickedAt: new Date().toISOString(),
         game: currentGame.id,
       };
+      // Attempt 1: Standard JSON POST (may trigger preflight)
       try {
         const resp = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
@@ -512,15 +513,20 @@
       } catch (err) {
         console.warn("First attempt failed (likely CORS/preflight)", err);
       }
+
+      // Attempt 2: Simple request with text/plain to avoid preflight
       try {
         const resp2 = await fetchWithTimeout(STORE_API_URL, {
           method: "POST",
-      
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8",
+            Accept: "application/json",
+          },
           body: JSON.stringify(payload),
         });
         if (!resp2.ok) {
           const text2 = await resp2.text().catch(() => "");
-          console.error("StorePick fallback failed", {
+          console.error("StorePick fallback (text/plain) failed", {
             status: resp2.status,
             statusText: resp2.statusText,
             body: text2,
@@ -528,14 +534,32 @@
           throw new Error(`Fallback failed with status ${resp2.status}`);
         }
         window.location.href = "history.html";
-      } catch (finalErr) {
-        console.error("Unable to store pick after fallback", finalErr);
-        alert(
-          "Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later."
-        );
-        storeBtn.disabled = false;
-        storeBtn.textContent = originalText;
+        return;
+      } catch (err2) {
+        console.warn("Second attempt failed (text/plain simple request)", err2);
       }
+
+      // Attempt 3: no-cors opaque request (fire-and-forget). We can’t read the response, so we optimistically navigate.
+      try {
+        await fetch(STORE_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8",
+          },
+          body: JSON.stringify(payload),
+        });
+        window.location.href = "history.html";
+        return;
+      } catch (err3) {
+        console.error("Third attempt failed (no-cors)", err3);
+      }
+
+      alert(
+        "Unable to store your pick right now. This may be a CORS or network configuration issue. Please try again later."
+      );
+      storeBtn.disabled = false;
+      storeBtn.textContent = originalText;
     }
 
     pickBtn.addEventListener("click", generateNumbers);
