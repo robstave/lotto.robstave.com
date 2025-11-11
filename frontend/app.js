@@ -48,7 +48,7 @@
 
   function createMysticBoard(svgElement) {
     if (!svgElement) {
-      throw new Error("Mystic board SVG element is required");
+      throw new Error("Mystic SVG element is required");
     }
 
     const svg = d3.select(svgElement);
