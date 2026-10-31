@@ -1,0 +1,10 @@
+# Node dependencies
+aws/**/node_modules/
+
+# Local environment files
+.env
+.env.*
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
