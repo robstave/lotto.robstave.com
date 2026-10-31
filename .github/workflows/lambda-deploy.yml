@@ -13,31 +13,47 @@ permissions:
 
 jobs:
   deploy-lambda:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Install Lambda dependencies
+        working-directory: aws/lambda/functions/storePick
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "No package.json found. This build requires dependencies before deployment."
+            exit 1
+          fi
+
       - name: Package storePick function
         working-directory: aws/lambda/functions/storePick
         run: |
-          npm ci || true
           zip -r storePick.zip . -x "*.git*"
 
       - name: Update Lambda code (storePick)
+        env:
+          LAMBDA_NAME: ${{ secrets.LAMBDA_STORE_PICK_NAME }}
         run: |
+          if [ -z "$LAMBDA_NAME" ]; then
+            echo "Missing secret: LAMBDA_STORE_PICK_NAME"
+            exit 1
+          fi
+
           aws lambda update-function-code \
-            --function-name "${{ secrets.LAMBDA_STORE_PICK_NAME }}" \
+            --function-name "$LAMBDA_NAME" \
             --zip-file fileb://aws/lambda/functions/storePick/storePick.zip
